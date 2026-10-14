@@ -2,8 +2,14 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Licenses, subscriptions, device bindings and activation tokens are server-only.
-    // Cloud Functions use the Admin SDK and are not restricted by these client rules.
+    // Permite leitura apenas de documento específico da chave digitada.
+    // Proíbe listar toda a coleção (list: if false) para ninguém descobrir chaves de terceiros.
+    // Proíbe qualquer escrita a partir do cliente (apenas o painel admin / Firebase Console altera).
+    match /licencas/{chave} {
+      allow get: if true;
+      allow list, write: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
