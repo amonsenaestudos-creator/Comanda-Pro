@@ -32,6 +32,8 @@ import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
 import { Footer } from './components/Footer';
 import { PrintTicketModal, TicketType } from './components/PrintTicketModal';
+import { AccessGate } from './components/AccessGate';
+import { useAccessLicense } from './hooks/useAccessLicense';
 
 // 10 Tabs
 import { Tab1Pdv } from './components/tabs/Tab1Pdv';
@@ -46,6 +48,8 @@ import { Tab9CozinhaDelivery } from './components/tabs/Tab9CozinhaDelivery';
 import { Tab10Cadastros } from './components/tabs/Tab10Cadastros';
 
 export function App() {
+  const accessLicense = useAccessLicense();
+
   // Application State
   const [activeTab, setActiveTab] = useState<number>(1);
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
@@ -327,6 +331,16 @@ export function App() {
   const occupiedTablesCount = tables.filter((t) => t.status === 'ocupada').length;
   const kitchenPendingCount = kitchenOrders.filter((k) => k.status === 'novo' || k.status === 'preparo').length;
 
+  if (accessLicense.status !== 'active' || !accessLicense.license) {
+    return (
+      <AccessGate
+        status={accessLicense.status}
+        message={accessLicense.message}
+        onActivate={accessLicense.activate}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-zinc-100 flex flex-col text-zinc-900 antialiased selection:bg-orange-500 selection:text-white">
       {/* Top Header Bar */}
@@ -335,6 +349,8 @@ export function App() {
         tables={tables}
         onNavigateTab={(tabId) => setActiveTab(tabId)}
         activeTab={activeTab}
+        licenseExpiresAt={accessLicense.license.expiresAt}
+        licenseOffline={accessLicense.offline}
       />
 
       {/* Main Body: Left Sidebar + Tab Workspace */}

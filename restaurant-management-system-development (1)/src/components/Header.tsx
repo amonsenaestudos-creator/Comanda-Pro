@@ -6,6 +6,7 @@ import {
   Wifi,
   Layers,
   UtensilsCrossed,
+  ShieldCheck,
 } from 'lucide-react';
 import { AppConfig, Table } from '../types';
 import { formatDateTime } from '../utils/formatters';
@@ -15,12 +16,23 @@ interface HeaderProps {
   tables: Table[];
   onNavigateTab: (tabIndex: number) => void;
   activeTab: number;
+  licenseExpiresAt: string;
+  licenseOffline: boolean;
 }
 
-export const Header: React.FC<HeaderProps> = ({ config, tables, onNavigateTab }) => {
+export const Header: React.FC<HeaderProps> = ({
+  config,
+  tables,
+  onNavigateTab,
+  licenseExpiresAt,
+  licenseOffline,
+}) => {
   const [currentDateTime, setCurrentDateTime] = useState<string>(
     formatDateTime(new Date())
   );
+  const licenseExpiryLabel = new Intl.DateTimeFormat('pt-BR', {
+    dateStyle: 'short',
+  }).format(new Date(licenseExpiresAt));
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -97,6 +109,28 @@ export const Header: React.FC<HeaderProps> = ({ config, tables, onNavigateTab })
 
         {/* Live Date/Time & Active User */}
         <div className="flex items-center space-x-3 sm:space-x-5">
+          {/* License status and monthly expiration */}
+          <div
+            title={
+              licenseOffline
+                ? `Verificação offline. Licença válida até ${licenseExpiryLabel}.`
+                : `Licença verificada. Válida até ${licenseExpiryLabel}.`
+            }
+            className={`hidden md:flex items-center gap-2 rounded-lg border px-2.5 py-1.5 ${
+              licenseOffline
+                ? 'border-amber-700/60 bg-amber-950/40 text-amber-300'
+                : 'border-emerald-800/70 bg-emerald-950/40 text-emerald-300'
+            }`}
+          >
+            <ShieldCheck className="h-4 w-4 shrink-0" aria-hidden="true" />
+            <span className="flex flex-col text-left leading-tight">
+              <span className="text-[10px] font-bold uppercase tracking-wide">
+                {licenseOffline ? 'Offline' : 'Licença ativa'}
+              </span>
+              <span className="text-[10px] opacity-80">Até {licenseExpiryLabel}</span>
+            </span>
+          </div>
+
           {/* Live Date & Time Highlight */}
           <div className="flex items-center space-x-2 bg-zinc-950 px-3.5 py-1.5 rounded-lg border border-zinc-800 text-orange-400 shadow-inner">
             <Clock className="w-4 h-4 text-orange-500 animate-pulse" />

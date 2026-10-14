@@ -9,6 +9,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@firebase/app": "^0.16.2",
+    "@firebase/app-check": "^0.13.1",
+    "@firebase/functions": "^0.14.0",
     "clsx": "2.1.1",
     "lucide-react": "^1.57.0",
     "react": "19.2.6",
@@ -23,7 +26,6 @@
     "@vitejs/plugin-react": "5.1.1",
     "tailwindcss": "4.1.17",
     "typescript": "5.9.3",
-    "vite": "7.3.2",
-    "vite-plugin-singlefile": "2.3.0"
+    "vite": "^7.3.7"
   }
 }
