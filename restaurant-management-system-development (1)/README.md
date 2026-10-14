@@ -109,6 +109,8 @@ Inicie `npm run dev`, copie o token mostrado no console do navegador para o Fire
 
 No GitHub Pages, forneça as variáveis `VITE_*` durante o build da aplicação. Elas precisam estar disponíveis quando `npm run build` executa; adicioná-las depois do build não altera o arquivo estático publicado. Não configure `LICENSE_PEPPER`, `LICENSE_SIGNING_PRIVATE_KEY` ou credenciais administrativas como variáveis `VITE_*`.
 
+O deploy do GitHub Pages é automático: o workflow `.github/workflows/deploy-pages.yml` executa `npm ci && npm run build` e publica a pasta `dist` a cada push em `main` (ou manualmente via *Run workflow*). Para habilitar o Firebase no site publicado, cadastre os valores `VITE_*` acima como secrets do repositório em **Settings → Secrets and variables → Actions** (nomes idênticos, ex.: `VITE_FIREBASE_API_KEY`). Com os secrets vazios o build continua funcionando e o sistema abre no modo "ativação ainda não configurada"; os valores passam a valer no próximo deploy após serem cadastrados.
+
 ## 4. Instalar e publicar as funções e as regras
 
 Na pasta do projeto:
