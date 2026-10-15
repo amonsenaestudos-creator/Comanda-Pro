@@ -72,7 +72,7 @@ export const Tab3Relatorios: React.FC<Tab3RelatoriosProps> = ({
   const handleClearConfirm = () => {
     if (
       window.confirm(
-        'ATENÇÃO: Deseja ZERAR O CAIXA / INICIAR NOVO DIA?\nIsso resetará o histórico de vendas diário para uma nova jornada de trabalho.'
+        'ATENÇÃO: Deseja APAGAR TODAS AS VENDAS registradas?\nIsso remove o histórico de vendas. Para encerrar o turno use a aba Caixa (fechamento com conferência). O histórico de caixas fechados é preservado.'
       )
     ) {
       onClearDailySales();
@@ -105,13 +105,13 @@ export const Tab3Relatorios: React.FC<Tab3RelatoriosProps> = ({
               <span>Imprimir Relatório</span>
             </button>
 
-            {/* Botão Vermelho: Zerar Caixa / Novo Dia */}
+            {/* Botão Vermelho: apagar vendas (uso avançado; o fechamento de turno fica na aba Caixa) */}
             <button
               onClick={handleClearConfirm}
               className="px-3.5 py-2 text-xs font-bold rounded-lg bg-rose-600 hover:bg-rose-700 text-white flex items-center gap-1.5 shadow-xs transition"
             >
               <AlertTriangle className="w-4 h-4" />
-              <span>Zerar Caixa / Novo Dia</span>
+              <span>Apagar Vendas</span>
             </button>
           </div>
         </div>

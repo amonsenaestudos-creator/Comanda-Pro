@@ -1,7 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   AppConfig,
   AppIntegration,
+  CancelamentoMotivo,
+  CaixaMovimentoTipo,
+  CaixaSessao,
+  CancelamentoItem,
   Customer,
   Deliverer,
   Employee,
@@ -25,17 +29,20 @@ import {
   createInitialKitchenOrders,
   createInitialSales,
   createInitialTables,
+  getSessionStored,
   getStored,
+  setSessionStored,
   setStored,
 } from './utils/storage';
+import { findOpenCaixa, newId, resumoCaixa } from './utils/caixa';
 import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
 import { Footer } from './components/Footer';
 import { PrintTicketModal, TicketType } from './components/PrintTicketModal';
 import { AccessGate } from './components/AccessGate';
+import { LoginOperador } from './components/LoginOperador';
 import { useAccessLicense } from './hooks/useAccessLicense';
 
-// 10 Tabs
 import { Tab1Pdv } from './components/tabs/Tab1Pdv';
 import { Tab2Pagamento } from './components/tabs/Tab2Pagamento';
 import { Tab3Relatorios } from './components/tabs/Tab3Relatorios';
@@ -46,15 +53,21 @@ import { Tab7Graficos } from './components/tabs/Tab7Graficos';
 import { Tab8Mesas } from './components/tabs/Tab8Mesas';
 import { Tab9CozinhaDelivery } from './components/tabs/Tab9CozinhaDelivery';
 import { Tab10Cadastros } from './components/tabs/Tab10Cadastros';
-import { Tab11ResumoRapido } from './components/tabs/Tab11ResumoRapido';
-import { Tab12Cliente } from './components/tabs/Tab12Cliente';
+import { Tab11Caixa } from './components/tabs/Tab11Caixa';
+
+const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
 
 export function App() {
   const accessLicense = useAccessLicense();
 
-  // Application State
+  // Operador (funcionário) logado — obrigatório para usar o sistema
+  const [operador, setOperador] = useState<Employee | null>(() =>
+    getSessionStored<Employee | null>(STORAGE_KEYS.OPERATOR_SESSION, null)
+  );
+
   const [activeTab, setActiveTab] = useState<number>(1);
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
 
   const [config, setConfig] = useState<AppConfig>(() =>
     getStored<AppConfig>(STORAGE_KEYS.CONFIG, DEFAULT_CONFIG)
@@ -98,6 +111,14 @@ export function App() {
 
   const [kitchenOrders, setKitchenOrders] = useState<KitchenOrder[]>(() =>
     getStored<KitchenOrder[]>(STORAGE_KEYS.KITCHEN_ORDERS, createInitialKitchenOrders())
+  );
+
+  const [caixaSessions, setCaixaSessions] = useState<CaixaSessao[]>(() =>
+    getStored<CaixaSessao[]>(STORAGE_KEYS.CAIXA_SESSIONS, [])
+  );
+
+  const [cancellations, setCancellations] = useState<CancelamentoItem[]>(() =>
+    getStored<CancelamentoItem[]>(STORAGE_KEYS.CANCELLATIONS, [])
   );
 
   // Active Context for PDV and Payment
@@ -148,10 +169,16 @@ export function App() {
   useEffect(() => setStored(STORAGE_KEYS.SUPPLIERS, suppliers), [suppliers]);
   useEffect(() => setStored(STORAGE_KEYS.APPS, apps), [apps]);
   useEffect(() => setStored(STORAGE_KEYS.KITCHEN_ORDERS, kitchenOrders), [kitchenOrders]);
+  useEffect(() => setStored(STORAGE_KEYS.CAIXA_SESSIONS, caixaSessions), [caixaSessions]);
+  useEffect(() => setStored(STORAGE_KEYS.CANCELLATIONS, cancellations), [cancellations]);
+  useEffect(() => setSessionStored(STORAGE_KEYS.OPERATOR_SESSION, operador), [operador]);
 
-  // Global Keyboard Shortcuts
+  const caixaAberto = findOpenCaixa(caixaSessions);
+
+  // Global Keyboard Shortcuts (F1 PDV, F2 Pagamento, F11 Caixa)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (!operador) return;
       if (e.key === 'F1') {
         e.preventDefault();
         setActiveTab(1);
@@ -161,71 +188,132 @@ export function App() {
       } else if (e.key === 'F11') {
         e.preventDefault();
         setActiveTab(11);
-      } else if (e.key === 'F12') {
-        e.preventDefault();
-        setActiveTab(12);
       } else if (e.key === 'Escape') {
         if (printModalState.isOpen) {
           setPrintModalState((prev) => ({ ...prev, isOpen: false }));
         }
+        setMobileMenuOpen(false);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [printModalState.isOpen]);
+  }, [printModalState.isOpen, operador]);
 
-  // Save items in table
-  const handleSaveTableItems = (
-    tableNum: number,
-    items: OrderItem[],
-    waiterName?: string
-  ) => {
+  // Operador: entrada e saída
+  const handleLogin = useCallback((emp: Employee) => {
+    setOperador(emp);
+    setActiveTab(1);
+  }, []);
+
+  const handleLogout = () => {
+    if (window.confirm('Trocar de operador? Os dados em aberto continuam salvos.')) {
+      setOperador(null);
+      setMobileMenuOpen(false);
+    }
+  };
+
+  // Save items in table (lançamento de itens da comanda)
+  const handleSaveTableItems = (tableNum: number, items: OrderItem[], waiterName?: string) => {
     const total = items.reduce((acc, it) => acc + it.valorTotal, 0);
     setTables((prev) =>
       prev.map((t) => {
-        if (t.numero === tableNum) {
-          return {
-            ...t,
-            itens: items,
-            total,
-            status: items.length > 0 ? (t.status === 'livre' ? 'ocupada' : t.status) : 'livre',
-            garcom: waiterName || t.garcom || employees[0]?.nome,
-            abertura: t.abertura || (items.length > 0 ? new Date().toISOString() : undefined),
-          };
+        if (t.numero !== tableNum) return t;
+        if (items.length === 0) {
+          return { numero: tableNum, status: 'livre', itens: [], total: 0, observacaoMesa: t.observacaoMesa };
         }
-        return t;
+        return {
+          ...t,
+          itens: items,
+          total,
+          status: t.status === 'livre' ? 'ocupada' : t.status,
+          garcom: waiterName || t.garcom || operador?.nome,
+          abertura: t.abertura || new Date().toISOString(),
+        };
       })
     );
   };
 
+  // Cancela parte ou todo um item da mesa e registra o motivo (controle gerencial)
+  const handleCancelItem = (
+    tableNum: number,
+    item: OrderItem,
+    quantidade: number,
+    motivo: CancelamentoMotivo
+  ) => {
+    setTables((prev) =>
+      prev.map((t) => {
+        if (t.numero !== tableNum) return t;
+        const alvo = t.itens.find((it) => it.id === item.id);
+        if (!alvo) return t;
+        const qtyCancel = Math.min(Math.max(1, quantidade), alvo.quantidade);
+        const restante = alvo.quantidade - qtyCancel;
+        const novosItens: OrderItem[] =
+          restante <= 0
+            ? t.itens.filter((it) => it.id !== alvo.id)
+            : t.itens.map((it) =>
+                it.id === alvo.id
+                  ? { ...it, quantidade: restante, valorTotal: round2(restante * it.precoUnitario) }
+                  : it
+              );
+        const total = round2(novosItens.reduce((acc, it) => acc + it.valorTotal, 0));
+        if (novosItens.length === 0) {
+          return { numero: tableNum, status: 'livre', itens: [], total: 0, observacaoMesa: t.observacaoMesa };
+        }
+        return { ...t, itens: novosItens, total };
+      })
+    );
+
+    const qtyCancel = Math.min(Math.max(1, quantidade), item.quantidade);
+    setCancellations((prev) => [
+      {
+        id: newId('canc'),
+        dataHora: new Date().toISOString(),
+        mesa: tableNum,
+        descricao: item.descricao,
+        quantidade: qtyCancel,
+        valor: round2(qtyCancel * item.precoUnitario),
+        motivo,
+        operador: operador?.nome || config.usuarioAtual,
+      },
+      ...prev,
+    ]);
+  };
+
+  // Transfere a comanda inteira de uma mesa ocupada para uma mesa livre
+  const handleTransferTable = (from: number, to: number) => {
+    if (from === to) return;
+    setTables((prev) => {
+      const src = prev.find((t) => t.numero === from);
+      const dst = prev.find((t) => t.numero === to);
+      if (!src || !dst || src.itens.length === 0 || dst.status !== 'livre' || dst.itens.length > 0) {
+        return prev;
+      }
+      return prev.map((t) => {
+        if (t.numero === to) return { ...src, numero: to };
+        if (t.numero === from) return { numero: from, status: 'livre', itens: [], total: 0 };
+        return t;
+      });
+    });
+    setSelectedTableNumber(to);
+  };
+
   // Update table status
   const handleUpdateTableStatus = (tableNum: number, status: Table['status']) => {
-    setTables((prev) =>
-      prev.map((t) => (t.numero === tableNum ? { ...t, status } : t))
-    );
+    setTables((prev) => prev.map((t) => (t.numero === tableNum ? { ...t, status } : t)));
   };
 
   // Release table completely
   const handleReleaseTable = (tableNum: number) => {
     setTables((prev) =>
       prev.map((t) =>
-        t.numero === tableNum
-          ? {
-              numero: tableNum,
-              status: 'livre',
-              itens: [],
-              total: 0,
-            }
-          : t
+        t.numero === tableNum ? { numero: tableNum, status: 'livre', itens: [], total: 0 } : t
       )
     );
   };
 
   // Save table observation (quick note)
   const handleSaveTableObservation = (tableNum: number, note: string) => {
-    setTables((prev) =>
-      prev.map((t) => (t.numero === tableNum ? { ...t, observacaoMesa: note } : t))
-    );
+    setTables((prev) => prev.map((t) => (t.numero === tableNum ? { ...t, observacaoMesa: note } : t)));
   };
 
   // Navigate to Payment from PDV or Tables
@@ -237,6 +325,74 @@ export function App() {
   }) => {
     setCurrentOrderForPayment(orderData);
     setActiveTab(2);
+  };
+
+  // ----- Caixa -----
+  const handleOpenCaixa = (fundoInicial: number) => {
+    if (caixaAberto) return;
+    const sessao: CaixaSessao = {
+      id: newId('caixa'),
+      status: 'aberto',
+      operador: operador?.nome || config.usuarioAtual,
+      abertura: new Date().toISOString(),
+      fundoInicial: round2(fundoInicial),
+      movimentos: [],
+    };
+    setCaixaSessions((prev) => [sessao, ...prev]);
+  };
+
+  const handleAddMovimento = (tipo: CaixaMovimentoTipo, valor: number, motivo: string) => {
+    if (!caixaAberto) return;
+    const id = caixaAberto.id;
+    setCaixaSessions((prev) =>
+      prev.map((s) =>
+        s.id === id
+          ? {
+              ...s,
+              movimentos: [
+                ...s.movimentos,
+                {
+                  id: newId('mov'),
+                  tipo,
+                  valor: round2(valor),
+                  motivo,
+                  dataHora: new Date().toISOString(),
+                  operador: operador?.nome || config.usuarioAtual,
+                },
+              ],
+            }
+          : s
+      )
+    );
+  };
+
+  const handleCloseCaixa = (dinheiroContado: number, observacao: string) => {
+    if (!caixaAberto) return;
+    const resumo = resumoCaixa(caixaAberto, sales);
+    const diferenca = round2(dinheiroContado - resumo.dinheiroEsperado);
+    const id = caixaAberto.id;
+    setCaixaSessions((prev) =>
+      prev.map((s) =>
+        s.id === id
+          ? {
+              ...s,
+              status: 'fechado',
+              fechamento: new Date().toISOString(),
+              dinheiroContado: round2(dinheiroContado),
+              dinheiroEsperado: resumo.dinheiroEsperado,
+              diferenca,
+              observacaoFechamento: observacao || undefined,
+              resumo: {
+                vendasCount: resumo.vendasCount,
+                totalVendas: resumo.totalVendas,
+                porMetodo: resumo.porMetodo,
+                sangrias: resumo.sangrias,
+                suprimentos: resumo.suprimentos,
+              },
+            }
+          : s
+      )
+    );
   };
 
   // Finish Sale
@@ -256,10 +412,7 @@ export function App() {
   };
 
   // Print Table Pre-bill (isolated table printing)
-  const handlePrintTableTicket = (
-    mesaNum: number | string,
-    items: OrderItem[]
-  ) => {
+  const handlePrintTableTicket = (mesaNum: number | string, items: OrderItem[]) => {
     const sub = items.reduce((acc, it) => acc + it.valorTotal, 0);
     const tableObj = typeof mesaNum === 'number' ? tables.find((t) => t.numero === mesaNum) : null;
     const taxaServicoPercent = config.taxaServicoPadraoPercent || 10;
@@ -270,7 +423,7 @@ export function App() {
       isOpen: true,
       ticketType: 'conferencia_mesa',
       mesa: mesaNum,
-      atendente: tableObj?.garcom || config.usuarioAtual,
+      atendente: tableObj?.garcom || operador?.nome || config.usuarioAtual,
       itens: items,
       subtotal: sub,
       taxaServicoPercent,
@@ -338,12 +491,12 @@ export function App() {
     setKitchenOrders((prev) => [newKOrder, ...prev]);
   };
 
-  // Clear daily sales (Zerar Caixa)
+  // Clear daily sales (Zerar Caixa) — os caixas fechados guardam snapshot, então o histórico continua correto
   const handleClearDailySales = () => {
     setSales([]);
   };
 
-  const occupiedTablesCount = tables.filter((t) => t.status === 'ocupada').length;
+  const occupiedTablesCount = tables.filter((t) => t.status === 'ocupada' || t.status === 'conta_solicitada').length;
   const kitchenPendingCount = kitchenOrders.filter((k) => k.status === 'novo' || k.status === 'preparo').length;
 
   if (accessLicense.status !== 'active' || !accessLicense.license) {
@@ -356,33 +509,47 @@ export function App() {
     );
   }
 
+  if (!operador) {
+    return (
+      <LoginOperador
+        employees={employees}
+        fallbackName={config.usuarioAtual}
+        onLogin={handleLogin}
+      />
+    );
+  }
+
+  // Configuração "operacional": o operador logado é o atendente padrão nas telas de venda
+  const configOperacional: AppConfig = { ...config, usuarioAtual: operador.nome };
+
   return (
-    <div className="min-h-screen bg-zinc-100 flex flex-col text-zinc-900 antialiased selection:bg-orange-500 selection:text-white">
-      {/* Top Header Bar */}
+    <div className="flex h-[100dvh] flex-col bg-zinc-100 text-zinc-900 antialiased selection:bg-orange-500 selection:text-white">
       <Header
         config={config}
         tables={tables}
         onNavigateTab={(tabId) => setActiveTab(tabId)}
-        activeTab={activeTab}
         licenseExpiresAt={accessLicense.license.expiresAt}
         licenseOffline={accessLicense.offline}
+        operador={operador}
+        caixaAberto={caixaAberto}
+        onToggleMenu={() => setMobileMenuOpen(true)}
+        onLogout={handleLogout}
       />
 
-      {/* Main Body: Left Sidebar + Tab Workspace */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Left Navigation Sidebar */}
+      <div className="flex min-h-0 flex-1">
         <Sidebar
           activeTab={activeTab}
           onSelectTab={(tabId) => setActiveTab(tabId)}
           collapsed={sidebarCollapsed}
           setCollapsed={setSidebarCollapsed}
+          mobileOpen={mobileMenuOpen}
+          setMobileOpen={setMobileMenuOpen}
           occupiedTablesCount={occupiedTablesCount}
           kitchenPendingCount={kitchenPendingCount}
         />
 
-        {/* Dynamic Tab Workspace */}
-        <main className="flex-1 overflow-y-auto p-3 sm:p-5 lg:p-6">
-          <div className="max-w-[1920px] mx-auto">
+        <main className="min-w-0 flex-1 overflow-y-auto">
+          <div className="mx-auto w-full max-w-[1600px] p-3 sm:p-5 lg:p-6">
             {activeTab === 1 && (
               <Tab1Pdv
                 products={products}
@@ -392,7 +559,9 @@ export function App() {
                 onSendToKitchen={handleSendToKitchenFromPdv}
                 onPrintTableTicket={handlePrintTableTicket}
                 onNavigateTab={(tabId) => setActiveTab(tabId)}
-                config={config}
+                onCancelItem={handleCancelItem}
+                caixaAberto={Boolean(caixaAberto)}
+                config={configOperacional}
                 selectedTableNumber={selectedTableNumber}
                 setSelectedTableNumber={setSelectedTableNumber}
                 onSaveTableObservation={handleSaveTableObservation}
@@ -403,10 +572,11 @@ export function App() {
               <Tab2Pagamento
                 currentOrder={currentOrderForPayment}
                 employees={employees}
-                config={config}
+                config={configOperacional}
                 onFinishSale={handleFinishSale}
                 onNavigateTab={(tabId) => setActiveTab(tabId)}
                 onOpenReceiptPrint={handleOpenReceiptPrint}
+                caixaId={caixaAberto?.id}
               />
             )}
 
@@ -457,7 +627,7 @@ export function App() {
             {activeTab === 8 && (
               <Tab8Mesas
                 tables={tables}
-                config={config}
+                config={configOperacional}
                 onSelectTableForPdv={(tableNum) => {
                   setSelectedTableNumber(tableNum);
                   setActiveTab(1);
@@ -466,6 +636,7 @@ export function App() {
                 onPrintTableTicket={handlePrintTableTicket}
                 onUpdateTableStatus={handleUpdateTableStatus}
                 onReleaseTable={handleReleaseTable}
+                onTransferTable={handleTransferTable}
                 onNavigateTab={(tabId) => setActiveTab(tabId)}
               />
             )}
@@ -482,20 +653,17 @@ export function App() {
               />
             )}
 
-            {activeTab === 12 && (
-              <Tab12Cliente
-                tables={tables}
-                selectedTableNumber={selectedTableNumber}
-                config={config}
-              />
-            )}
-
             {activeTab === 11 && (
-              <Tab11ResumoRapido
+              <Tab11Caixa
+                sessions={caixaSessions}
                 sales={sales}
                 tables={tables}
                 kitchenOrders={kitchenOrders}
-                config={config}
+                cancellations={cancellations}
+                operador={operador}
+                onOpenCaixa={handleOpenCaixa}
+                onAddMovimento={handleAddMovimento}
+                onCloseCaixa={handleCloseCaixa}
                 onNavigateTab={(tabId) => setActiveTab(tabId)}
               />
             )}
@@ -542,7 +710,6 @@ export function App() {
         observacoes={printModalState.observacoes}
       />
 
-      {/* Footer with Conta Bahia Contabilidade & v2.0 */}
       <Footer />
     </div>
   );

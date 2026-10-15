@@ -10,20 +10,21 @@ import {
   LayoutGrid,
   ChefHat,
   Users,
-  Sparkles,
-  Monitor,
+  Wallet,
   ChevronLeft,
   ChevronRight,
+  X,
 } from 'lucide-react';
+import { cn } from '../utils/cn';
 
 export interface TabItem {
   id: number;
   label: string;
   sublabel: string;
   icon: React.ElementType;
-  badge?: number | string;
-  badgeColor?: string;
-  color?: string;
+  badge?: number;
+  badgeTone?: 'rose' | 'orange';
+  shortcut?: string;
 }
 
 interface SidebarProps {
@@ -31,8 +32,15 @@ interface SidebarProps {
   onSelectTab: (tabId: number) => void;
   collapsed: boolean;
   setCollapsed: (collapsed: boolean) => void;
+  mobileOpen: boolean;
+  setMobileOpen: (open: boolean) => void;
   occupiedTablesCount: number;
   kitchenPendingCount: number;
+}
+
+interface TabGroup {
+  title: string;
+  items: TabItem[];
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -40,210 +48,187 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onSelectTab,
   collapsed,
   setCollapsed,
+  mobileOpen,
+  setMobileOpen,
   occupiedTablesCount,
   kitchenPendingCount,
 }) => {
-  const tabs: TabItem[] = [
+  const groups: TabGroup[] = [
     {
-      id: 1,
-      label: 'Frente de Caixa',
-      sublabel: 'PDV & Comandas',
-      icon: ShoppingCart,
+      title: 'Operação',
+      items: [
+        { id: 1, label: 'Frente de Caixa', sublabel: 'PDV e comandas', icon: ShoppingCart, shortcut: 'F1' },
+        { id: 8, label: 'Mesas', sublabel: 'Salão 1 a 50', icon: LayoutGrid, badge: occupiedTablesCount, badgeTone: 'rose' },
+        { id: 2, label: 'Pagamento', sublabel: 'Checkout e PIX', icon: CreditCard, shortcut: 'F2' },
+        { id: 9, label: 'Cozinha & Delivery', sublabel: 'Pedidos e entregas', icon: ChefHat, badge: kitchenPendingCount, badgeTone: 'orange' },
+      ],
     },
     {
-      id: 2,
-      label: 'Tela Pagamentos',
-      sublabel: 'Checkout & PIX',
-      icon: CreditCard,
+      title: 'Caixa',
+      items: [
+        { id: 11, label: 'Caixa', sublabel: 'Abertura, sangria e fechamento', icon: Wallet, shortcut: 'F11' },
+        { id: 3, label: 'Relatórios', sublabel: 'Vendas e fechamento', icon: FileText },
+        { id: 6, label: 'Financeiro', sublabel: 'Cartões e conciliação', icon: DollarSign },
+      ],
     },
     {
-      id: 3,
-      label: 'Relatórios de Venda',
-      sublabel: 'Histórico & Fechamento',
-      icon: FileText,
-    },
-    {
-      id: 4,
-      label: 'Configuração',
-      sublabel: 'Empresa & BrasilAPI',
-      icon: Settings,
-    },
-    {
-      id: 5,
-      label: 'Estoques & Base',
-      sublabel: 'Import CSV & Cardápio',
-      icon: Package,
-    },
-    {
-      id: 6,
-      label: 'Financeiro',
-      sublabel: 'Cartões & Conciliação',
-      icon: DollarSign,
-    },
-    {
-      id: 7,
-      label: 'Gráficos (%)',
-      sublabel: 'Dashboard & Vendas',
-      icon: BarChart3,
-    },
-    {
-      id: 8,
-      label: 'Gestão de Mesas',
-      sublabel: 'Mesas 1 a 50 (Salão)',
-      icon: LayoutGrid,
-      badge: occupiedTablesCount > 0 ? occupiedTablesCount : undefined,
-      badgeColor: 'bg-rose-500 text-white',
-    },
-    {
-      id: 9,
-      label: 'Cozinha & Delivery',
-      sublabel: 'Kanban & Produção',
-      icon: ChefHat,
-      badge: kitchenPendingCount > 0 ? kitchenPendingCount : undefined,
-      badgeColor: 'bg-orange-500 text-white',
-    },
-    {
-      id: 10,
-      label: 'Cadastros',
-      sublabel: 'Clientes & Equipe',
-      icon: Users,
-    },
-    {
-      id: 12,
-      label: 'Tela Cliente',
-      sublabel: 'Comanda visual',
-      icon: Monitor,
-      color: 'text-amber-300',
-    },
-    {
-      id: 11,
-      label: 'Resumo Rápido',
-      sublabel: 'Caixa & Status',
-      icon: Sparkles,
-      color: 'text-amber-300',
+      title: 'Gestão',
+      items: [
+        { id: 10, label: 'Cadastros', sublabel: 'Clientes e equipe', icon: Users },
+        { id: 5, label: 'Estoque & Cardápio', sublabel: 'Produtos e importação', icon: Package },
+        { id: 7, label: 'Gráficos', sublabel: 'Dashboard de vendas', icon: BarChart3 },
+        { id: 4, label: 'Configuração', sublabel: 'Empresa e impostos', icon: Settings },
+      ],
     },
   ];
 
+  const select = (id: number) => {
+    onSelectTab(id);
+    setMobileOpen(false);
+  };
+
   return (
-    <aside
-      className={`bg-zinc-950 text-zinc-300 border-r border-zinc-800 transition-all duration-200 ease-in-out flex flex-col select-none relative z-30 shrink-0 ${
-        collapsed ? 'w-16' : 'w-64'
-      }`}
-    >
-      {/* Sidebar Header toggle */}
-      <div className="flex items-center justify-between p-3 border-b border-zinc-800/80">
-        {!collapsed && (
-          <div className="flex items-center space-x-2 px-1">
-            <span className="text-[11px] font-bold tracking-wider text-zinc-400 uppercase">
-              Menu Principal
-            </span>
+    <>
+      {/* Fundo escuro do menu no celular */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-zinc-950/60 backdrop-blur-[1px] lg:hidden"
+          onClick={() => setMobileOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      <aside
+        aria-label="Menu principal"
+        className={cn(
+          'fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] flex-col border-r border-zinc-800 bg-zinc-950 text-zinc-300 shadow-2xl transition-transform duration-200 ease-out',
+          mobileOpen ? 'translate-x-0' : '-translate-x-full',
+          'lg:static lg:z-30 lg:translate-x-0 lg:shadow-none lg:transition-[width] lg:duration-200',
+          collapsed ? 'lg:w-[68px]' : 'lg:w-60'
+        )}
+      >
+        {/* Topo do menu */}
+        <div className={cn('flex h-14 items-center border-b border-zinc-800/80 px-3 md:h-16', collapsed ? 'lg:justify-center' : 'justify-between')}>
+          {(!collapsed || mobileOpen) && (
+            <span className="px-1 text-[11px] font-bold uppercase tracking-[0.18em] text-zinc-500">Menu</span>
+          )}
+          <button
+            type="button"
+            onClick={() => setMobileOpen(false)}
+            aria-label="Fechar menu"
+            className="rounded-lg p-1.5 text-zinc-400 transition hover:bg-zinc-800 hover:text-white lg:hidden"
+          >
+            <X className="h-5 w-5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setCollapsed(!collapsed)}
+            aria-label={collapsed ? 'Expandir menu' : 'Recolher menu'}
+            title={collapsed ? 'Expandir menu' : 'Recolher menu'}
+            className={cn(
+              'hidden rounded-lg p-1.5 text-zinc-400 transition hover:bg-zinc-800 hover:text-white lg:flex',
+              !collapsed && 'ml-auto'
+            )}
+          >
+            {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+          </button>
+        </div>
+
+        {/* Navegação */}
+        <nav className="flex-1 space-y-4 overflow-y-auto px-2 py-3">
+          {groups.map((group) => (
+            <div key={group.title}>
+              {!collapsed || mobileOpen ? (
+                <p className="mb-1.5 px-3 text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-600">
+                  {group.title}
+                </p>
+              ) : (
+                <div className="mx-3 mb-2 border-t border-zinc-800" />
+              )}
+              <ul className="space-y-0.5">
+                {group.items.map((tab) => {
+                  const Icon = tab.icon;
+                  const isActive = activeTab === tab.id;
+                  const showLabels = !collapsed || mobileOpen;
+                  return (
+                    <li key={tab.id}>
+                      <button
+                        type="button"
+                        onClick={() => select(tab.id)}
+                        title={!showLabels ? tab.label : tab.shortcut ? `${tab.label} (${tab.shortcut})` : tab.label}
+                        aria-current={isActive ? 'page' : undefined}
+                        className={cn(
+                          'group relative flex w-full items-center rounded-xl text-left transition',
+                          showLabels ? 'gap-3 px-3 py-2.5' : 'justify-center p-2.5',
+                          isActive
+                            ? 'bg-orange-600 text-white shadow-md shadow-orange-950/40'
+                            : 'text-zinc-400 hover:bg-zinc-800/80 hover:text-zinc-100'
+                        )}
+                      >
+                        <Icon className={cn('h-[18px] w-[18px] shrink-0', isActive ? 'text-white' : 'text-zinc-500 group-hover:text-orange-400')} />
+
+                        {showLabels && (
+                          <>
+                            <span className="min-w-0 flex-1">
+                              <span className={cn('block truncate text-sm', isActive ? 'font-bold text-white' : 'font-semibold text-zinc-200')}>
+                                {tab.label}
+                              </span>
+                              <span className={cn('block truncate text-[11px]', isActive ? 'text-orange-100/90' : 'text-zinc-500')}>
+                                {tab.sublabel}
+                              </span>
+                            </span>
+                            {tab.shortcut && (
+                              <kbd className={cn('hidden rounded px-1 font-mono text-[10px] xl:inline', isActive ? 'bg-black/20 text-orange-50' : 'bg-zinc-800 text-zinc-500')}>
+                                {tab.shortcut}
+                              </kbd>
+                            )}
+                            {tab.badge !== undefined && tab.badge > 0 && (
+                              <span
+                                className={cn(
+                                  'min-w-[1.25rem] rounded-full px-1.5 text-center text-[10px] font-bold leading-5 text-white',
+                                  tab.badgeTone === 'orange' ? 'bg-orange-500' : 'bg-rose-500',
+                                  isActive && 'bg-white/25'
+                                )}
+                              >
+                                {tab.badge}
+                              </span>
+                            )}
+                          </>
+                        )}
+
+                        {!showLabels && tab.badge !== undefined && tab.badge > 0 && (
+                          <span
+                            className={cn(
+                              'absolute right-1 top-1 h-2.5 w-2.5 rounded-full ring-2 ring-zinc-950',
+                              tab.badgeTone === 'orange' ? 'bg-orange-500' : 'bg-rose-500'
+                            )}
+                          />
+                        )}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ))}
+        </nav>
+
+        {/* Rodapé: ocupação do salão */}
+        {(!collapsed || mobileOpen) && (
+          <div className="border-t border-zinc-800/80 bg-zinc-900/60 p-3">
+            <div className="mb-1.5 flex items-center justify-between text-[11px] text-zinc-400">
+              <span>Ocupação do salão</span>
+              <span className="font-semibold text-zinc-200">{occupiedTablesCount}/50</span>
+            </div>
+            <div className="h-1.5 w-full overflow-hidden rounded-full bg-zinc-800">
+              <div
+                className="h-1.5 rounded-full bg-orange-500 transition-all"
+                style={{ width: `${(occupiedTablesCount / 50) * 100}%` }}
+              />
+            </div>
           </div>
         )}
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          className={`p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition mx-auto ${
-            collapsed ? '' : 'ml-auto'
-          }`}
-          title={collapsed ? 'Expandir Menu' : 'Recolher Menu'}
-        >
-          {collapsed ? (
-            <ChevronRight className="w-4 h-4" />
-          ) : (
-            <ChevronLeft className="w-4 h-4" />
-          )}
-        </button>
-      </div>
-
-      {/* Nav List */}
-      <nav className="flex-1 overflow-y-auto py-2 px-2 space-y-1">
-        {tabs.map((tab) => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
-
-          return (
-            <button
-              key={tab.id}
-              onClick={() => onSelectTab(tab.id)}
-              title={collapsed ? `Aba ${tab.id}: ${tab.label}` : undefined}
-              className={`w-full group flex items-center rounded-lg transition-all duration-150 text-left relative ${
-                collapsed ? 'justify-center p-2.5' : 'px-3 py-2.5 space-x-3'
-              } ${
-                isActive
-                  ? 'bg-orange-600 text-white font-semibold shadow-md shadow-orange-950/40'
-                  : 'text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/80'
-              }`}
-            >
-              <div
-                className={`flex items-center justify-center shrink-0 ${
-                  isActive ? 'text-white' : 'text-zinc-400 group-hover:text-orange-400'
-                }`}
-              >
-                <Icon className="w-5 h-5" />
-              </div>
-
-              {!collapsed && (
-                <div className="flex-1 min-w-0 pr-1">
-                  <div className="flex items-center justify-between">
-                    <span
-                      className={`text-xs truncate ${
-                        isActive ? 'text-white font-bold' : 'text-zinc-200'
-                      }`}
-                    >
-                      <span className="text-zinc-400 font-mono mr-1.5 text-[10px]">
-                        #{tab.id}
-                      </span>
-                      {tab.label}
-                    </span>
-                    {tab.badge !== undefined && (
-                      <span
-                        className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full ${
-                          tab.badgeColor || 'bg-orange-500 text-white'
-                        }`}
-                      >
-                        {tab.badge}
-                      </span>
-                    )}
-                  </div>
-                  <div
-                    className={`text-[10px] truncate ${
-                      isActive ? 'text-orange-100' : 'text-zinc-400'
-                    }`}
-                  >
-                    {tab.sublabel}
-                  </div>
-                </div>
-              )}
-
-              {/* Collapsed dot/badge indicator */}
-              {collapsed && tab.badge !== undefined && (
-                <span
-                  className={`absolute top-1 right-1 w-2.5 h-2.5 rounded-full ${
-                    tab.badgeColor?.split(' ')[0] || 'bg-orange-500'
-                  }`}
-                />
-              )}
-            </button>
-          );
-        })}
-      </nav>
-
-      {/* Quick Status Info in Footer of Sidebar */}
-      {!collapsed && (
-        <div className="p-3 bg-zinc-900/60 border-t border-zinc-800/80 text-[11px] text-zinc-400">
-          <div className="flex justify-between items-center mb-1">
-            <span className="text-zinc-400">Mesas 1 a 50:</span>
-            <span className="font-semibold text-zinc-300">
-              {occupiedTablesCount}/50 ativas
-            </span>
-          </div>
-          <div className="w-full bg-zinc-800 rounded-full h-1.5 overflow-hidden">
-            <div
-              className="bg-orange-500 h-1.5 rounded-full transition-all"
-              style={{ width: `${(occupiedTablesCount / 50) * 100}%` }}
-            />
-          </div>
-        </div>
-      )}
-    </aside>
+      </aside>
+    </>
   );
 };

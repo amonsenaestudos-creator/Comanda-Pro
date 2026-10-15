@@ -201,6 +201,8 @@ export const Tab10Cadastros: React.FC<Tab10CadastrosProps> = ({
       );
     } else if (activeSubTab === 'colaboradores') {
       if (!formEmployee.nome?.trim()) return alert('Informe o nome do colaborador!');
+      const pinLimpo = (formEmployee.pin || '').trim();
+      if (pinLimpo && !/^\d{4,6}$/.test(pinLimpo)) return alert('A senha de acesso deve ter de 4 a 6 números.');
       const data: Employee = {
         id: editingId || `emp-${Date.now()}`,
         nome: formEmployee.nome.trim(),
@@ -210,6 +212,7 @@ export const Tab10Cadastros: React.FC<Tab10CadastrosProps> = ({
         cpf: formEmployee.cpf || '',
         funcao: formEmployee.funcao || 'Atendente',
         dataAdmissao: formEmployee.dataAdmissao || new Date().toISOString().slice(0, 10),
+        pin: pinLimpo || undefined,
       };
       onSaveEmployees(
         editingId ? employees.map((e) => (e.id === editingId ? data : e)) : [...employees, data]
@@ -981,6 +984,20 @@ export const Tab10Cadastros: React.FC<Tab10CadastrosProps> = ({
                         className="w-full px-3 py-1.5 bg-zinc-50 border border-zinc-300 rounded-lg font-mono"
                       />
                     </div>
+                  </div>
+                  <div>
+                    <label className="font-bold text-zinc-700 block mb-1">Senha de acesso (4 a 6 números):</label>
+                    <input
+                      type="password"
+                      inputMode="numeric"
+                      autoComplete="new-password"
+                      maxLength={6}
+                      placeholder="Ex.: 1234"
+                      value={formEmployee.pin || ''}
+                      onChange={(e) => setFormEmployee({ ...formEmployee, pin: e.target.value.replace(/\D/g, '') })}
+                      className="w-full px-3 py-1.5 bg-zinc-50 border border-zinc-300 rounded-lg font-mono tracking-widest"
+                    />
+                    <p className="mt-1 text-[10px] text-zinc-500">Usada para entrar no sistema. Deixe em branco para não exigir senha.</p>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>

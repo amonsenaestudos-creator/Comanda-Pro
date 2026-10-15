@@ -75,6 +75,8 @@ export interface Sale {
   clienteDoc?: string;
   impostosEstimados: number;
   observacoes?: string;
+  /** Id da sessão de caixa em que a venda foi concluída. */
+  caixaId?: string;
 }
 
 export interface CompanyData {
@@ -161,6 +163,66 @@ export interface Employee {
   cpf: string;
   funcao: string;
   dataAdmissao: string;
+  /** Senha numérica (4 a 6 dígitos) usada para entrar no sistema. Opcional. */
+  pin?: string;
+}
+
+/** Movimentos de dinheiro feitos durante um caixa aberto. */
+export type CaixaMovimentoTipo = 'sangria' | 'suprimento';
+
+export interface CaixaMovimento {
+  id: string;
+  tipo: CaixaMovimentoTipo;
+  valor: number;
+  motivo: string;
+  dataHora: string;
+  operador: string;
+}
+
+/** Sessão de caixa: abertura (fundo de troco) até fechamento (conferência). */
+export interface CaixaSessao {
+  id: string;
+  status: 'aberto' | 'fechado';
+  operador: string;
+  abertura: string;
+  fundoInicial: number;
+  movimentos: CaixaMovimento[];
+  fechamento?: string;
+  /** Valor em dinheiro contado pelo operador no fechamento. */
+  dinheiroContado?: number;
+  /** Dinheiro que deveria existir no caixa segundo o sistema. */
+  dinheiroEsperado?: number;
+  /** contado - esperado (positivo = sobra, negativo = falta). */
+  diferenca?: number;
+  observacaoFechamento?: string;
+  /** Snapshot dos totais gravado no fechamento (não depende das vendas guardadas). */
+  resumo?: {
+    vendasCount: number;
+    totalVendas: number;
+    porMetodo: Record<string, number>;
+    sangrias: number;
+    suprimentos: number;
+  };
+}
+
+export type CancelamentoMotivo =
+  | 'Erro de lançamento'
+  | 'Cliente desistiu'
+  | 'Produto em falta'
+  | 'Pedido errado da cozinha'
+  | 'Limpeza da mesa'
+  | 'Outro';
+
+/** Registro de item cancelado de uma mesa (controle gerencial). */
+export interface CancelamentoItem {
+  id: string;
+  dataHora: string;
+  mesa: number;
+  descricao: string;
+  quantidade: number;
+  valor: number;
+  motivo: CancelamentoMotivo | string;
+  operador: string;
 }
 
 export type KitchenOrderStatus = 'novo' | 'preparo' | 'pronto' | 'concluido';

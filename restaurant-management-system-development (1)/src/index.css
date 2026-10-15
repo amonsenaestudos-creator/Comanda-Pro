@@ -12,6 +12,13 @@
     background: #f97316;
     color: #fff;
   }
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  /* Toques em botões no celular sem atraso nem seleção acidental de texto */
+  button {
+    -webkit-tap-highlight-color: transparent;
+  }
 }
 
 @layer utilities {
@@ -21,6 +28,13 @@
     -webkit-backdrop-filter: blur(10px) saturate(140%);
     border: 1px solid rgba(255,255,255,0.35);
   }
+}
+
+/* Animação de erro (senha incorreta no login) */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-6px); }
+  40%, 80% { transform: translateX(6px); }
 }
 
 /* Custom scrollbars */

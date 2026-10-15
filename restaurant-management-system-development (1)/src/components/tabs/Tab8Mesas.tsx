@@ -9,9 +9,11 @@ import {
   User,
   X,
   CreditCard,
+  ArrowRightLeft,
 } from 'lucide-react';
 import { AppConfig, Table } from '../../types';
 import { formatCurrency, formatDateTime } from '../../utils/formatters';
+import { Modal, buttonClass } from '../ui';
 
 interface Tab8MesasProps {
   tables: Table[];
@@ -26,6 +28,8 @@ interface Tab8MesasProps {
   onPrintTableTicket: (mesaNum: number | string, items: Table['itens']) => void;
   onUpdateTableStatus: (tableNum: number, status: Table['status']) => void;
   onReleaseTable: (tableNum: number) => void;
+  /** Move todos os itens e o atendente de uma mesa ocupada para uma mesa livre. */
+  onTransferTable: (from: number, to: number) => void;
   onNavigateTab: (tabId: number) => void;
 }
 
@@ -36,8 +40,12 @@ export const Tab8Mesas: React.FC<Tab8MesasProps> = ({
   onPrintTableTicket,
   onUpdateTableStatus,
   onReleaseTable,
+  onTransferTable,
   onNavigateTab,
 }) => {
+  const [transferOpen, setTransferOpen] = useState(false);
+  const [transferTo, setTransferTo] = useState<number | null>(null);
+  const freeTables = tables.filter((t) => t.status === 'livre' && t.itens.length === 0);
   const [filterStatus, setFilterStatus] = useState<'todos' | 'livre' | 'ocupada' | 'conta_solicitada'>('todos');
   const [searchTableNum, setSearchTableNum] = useState<string>('');
   const [selectedTableDetail, setSelectedTableDetail] = useState<Table | null>(null);
@@ -429,7 +437,7 @@ export const Tab8Mesas: React.FC<Tab8MesasProps> = ({
             </div>
 
             {/* Main Action Buttons: Verde (Atender/Lançar), Azul (Imprimir Pré-Conta), Verde (Fechar e Pagar), Vermelho (Liberar Mesa) */}
-            <div className="mt-4 pt-3 border-t border-zinc-200 grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div className="mt-4 pt-3 border-t border-zinc-200 grid grid-cols-2 sm:grid-cols-5 gap-2">
               {/* Verde: Lançar Itens no PDV */}
               <button
                 onClick={() => {
@@ -467,6 +475,19 @@ export const Tab8Mesas: React.FC<Tab8MesasProps> = ({
                 <span>Fechar / Pagar</span>
               </button>
 
+              {/* Transferir consumo para outra mesa livre */}
+              <button
+                onClick={() => {
+                  setTransferTo(null);
+                  setTransferOpen(true);
+                }}
+                disabled={selectedTableDetail.itens.length === 0}
+                className="py-2 px-2 text-xs font-bold rounded-lg bg-zinc-800 hover:bg-zinc-900 text-white disabled:opacity-50 flex items-center justify-center gap-1 shadow-xs transition"
+              >
+                <ArrowRightLeft className="w-3.5 h-3.5" />
+                <span>Transferir</span>
+              </button>
+
               {/* Vermelho: Liberar Mesa */}
               <button
                 onClick={() => {
@@ -484,6 +505,61 @@ export const Tab8Mesas: React.FC<Tab8MesasProps> = ({
           </div>
         </div>
       )}
+
+      {/* Modal: transferir mesa */}
+      <Modal
+        open={transferOpen && selectedTableDetail !== null}
+        onClose={() => setTransferOpen(false)}
+        title={`Transferir Mesa ${selectedTableDetail?.numero ?? ''}`}
+        icon={<ArrowRightLeft className="h-5 w-5 text-zinc-800" />}
+        size="sm"
+        footer={
+          <div className="flex justify-end gap-2">
+            <button type="button" onClick={() => setTransferOpen(false)} className={buttonClass('ghost', 'md')}>
+              Cancelar
+            </button>
+            <button
+              type="button"
+              disabled={transferTo === null}
+              onClick={() => {
+                if (!selectedTableDetail || transferTo === null) return;
+                onTransferTable(selectedTableDetail.numero, transferTo);
+                setTransferOpen(false);
+                setSelectedTableDetail(null);
+              }}
+              className={buttonClass('dark', 'md')}
+            >
+              Transferir para Mesa {transferTo ?? '—'}
+            </button>
+          </div>
+        }
+      >
+        <p className="mb-3 text-xs text-zinc-500">
+          Escolha uma mesa livre. Itens, atendente e horário de abertura seguem para a nova mesa.
+        </p>
+        {freeTables.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-zinc-200 p-6 text-center text-sm text-zinc-400">
+            Não há mesas livres no momento.
+          </div>
+        ) : (
+          <div className="grid grid-cols-4 gap-2 sm:grid-cols-5">
+            {freeTables.map((t) => (
+              <button
+                key={t.numero}
+                type="button"
+                onClick={() => setTransferTo(t.numero)}
+                className={`rounded-xl border py-2.5 text-sm font-extrabold transition ${
+                  transferTo === t.numero
+                    ? 'border-orange-600 bg-orange-600 text-white shadow-sm'
+                    : 'border-emerald-300 bg-emerald-50 text-emerald-800 hover:border-emerald-500'
+                }`}
+              >
+                {String(t.numero).padStart(2, '0')}
+              </button>
+            ))}
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };

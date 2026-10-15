@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import {
   Search,
   Plus,
@@ -7,16 +7,28 @@ import {
   DollarSign,
   Printer,
   HelpCircle,
-  LogOut,
-  Utensils,
   ChefHat,
   Tag,
-  X,
-  Hash,
   ShoppingBag,
+  LayoutGrid,
+  ChevronLeft,
+  ChevronRight,
+  Ban,
+  Receipt,
+  CheckCircle2,
 } from 'lucide-react';
-import { AppConfig, OrderItem, Product, Table } from '../../types';
+import { AppConfig, CancelamentoMotivo, OrderItem, Product, Table } from '../../types';
 import { formatCurrency } from '../../utils/formatters';
+import { Badge, Modal, PageHeader, buttonClass } from '../ui';
+import { cn } from '../../utils/cn';
+
+const MOTIVOS_CANCELAMENTO: CancelamentoMotivo[] = [
+  'Erro de lançamento',
+  'Cliente desistiu',
+  'Produto em falta',
+  'Pedido errado da cozinha',
+  'Outro',
+];
 
 interface Tab1PdvProps {
   products: Product[];
@@ -36,6 +48,9 @@ interface Tab1PdvProps {
   onPrintTableTicket: (mesaNum: number | string, items: OrderItem[]) => void;
   onNavigateTab: (tabId: number) => void;
   onSaveTableObservation?: (tableNum: number, note: string) => void;
+  /** Cancela parte ou todo um item da mesa e grava o motivo no controle gerencial. */
+  onCancelItem: (tableNum: number, item: OrderItem, quantidade: number, motivo: CancelamentoMotivo) => void;
+  caixaAberto: boolean;
   config: AppConfig;
   selectedTableNumber?: number;
   setSelectedTableNumber?: (tableNum: number) => void;
@@ -50,11 +65,12 @@ export const Tab1Pdv: React.FC<Tab1PdvProps> = ({
   onPrintTableTicket,
   onNavigateTab,
   onSaveTableObservation,
+  onCancelItem,
+  caixaAberto,
   config,
   selectedTableNumber: propTableNum,
   setSelectedTableNumber: setPropTableNum,
 }) => {
-  // Table selection: 1 to 50 or 0 for 'Balcão / Avulso'
   const [currentTableNum, setCurrentTableNum] = useState<number>(propTableNum || 1);
   const [searchTerm, setSearchTerm] = useState('');
   const [quantity, setQuantity] = useState<number>(1);
@@ -64,55 +80,47 @@ export const Tab1Pdv: React.FC<Tab1PdvProps> = ({
   const [priceLookupSearch, setPriceLookupSearch] = useState('');
   const [kitchenAlert, setKitchenAlert] = useState<string | null>(null);
   const [mesaObservacaoInput, setMesaObservacaoInput] = useState('');
+  const [cancelTarget, setCancelTarget] = useState<OrderItem | null>(null);
+  const [cancelQty, setCancelQty] = useState(1);
+  const [cancelMotivo, setCancelMotivo] = useState<CancelamentoMotivo>('Erro de lançamento');
 
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  // Sync prop changes if selected from Mesa tab
   useEffect(() => {
-    if (propTableNum) {
-      setCurrentTableNum(propTableNum);
-    }
+    if (propTableNum) setCurrentTableNum(propTableNum);
   }, [propTableNum]);
 
-  // Find active table data
   const currentTable = tables.find((t) => t.numero === currentTableNum);
-  const currentItems = currentTable ? currentTable.itens : [];
-
-  // Calculate totals
+  const currentItems = useMemo(() => currentTable?.itens ?? [], [currentTable]);
   const totalItemsCount = currentItems.reduce((acc, it) => acc + it.quantidade, 0);
   const totalValue = currentItems.reduce((acc, it) => acc + it.valorTotal, 0);
 
-  // Filter products for search
+  const categories = useMemo(
+    () => ['TODOS', ...Array.from(new Set(products.map((p) => p.setor)))],
+    [products]
+  );
+
   const filteredProducts = products.filter((p) => {
-    const matchesSearch =
-      searchTerm.trim() === '' ||
-      p.descricao.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.ean.includes(searchTerm);
+    const term = searchTerm.trim().toLowerCase();
+    const matchesSearch = term === '' || p.descricao.toLowerCase().includes(term) || p.ean.includes(searchTerm.trim());
     const matchesCat = activeCategory === 'TODOS' || p.setor === activeCategory;
     return matchesSearch && matchesCat;
   });
 
-  // Unique categories
-  const categories = ['TODOS', ...Array.from(new Set(products.map((p) => p.setor)))];
-
-  // Price lookup modal items
   const lookupProducts = products.filter(
     (p) =>
       p.descricao.toLowerCase().includes(priceLookupSearch.toLowerCase()) ||
       p.ean.includes(priceLookupSearch)
   );
 
-  // Sync mesa observation when table changes
   useEffect(() => {
-    const tableObj = tables.find((t) => t.numero === currentTableNum);
-    setMesaObservacaoInput(tableObj?.observacaoMesa || '');
-  }, [currentTableNum, tables]);
+    setMesaObservacaoInput(currentTable?.observacaoMesa || '');
+  }, [currentTableNum, currentTable?.observacaoMesa]);
 
   const handleSelectTable = (num: number) => {
+    if (num < 1 || num > 50) return;
     setCurrentTableNum(num);
-    if (setPropTableNum) {
-      setPropTableNum(num);
-    }
+    if (setPropTableNum) setPropTableNum(num);
   };
 
   const handleAddItem = (prod: Product, customQty?: number) => {
@@ -124,7 +132,6 @@ export const Tab1Pdv: React.FC<Tab1PdvProps> = ({
     );
 
     let updatedItems: OrderItem[];
-
     if (existingIdx >= 0) {
       updatedItems = [...currentItems];
       const exist = updatedItems[existingIdx];
@@ -151,26 +158,20 @@ export const Tab1Pdv: React.FC<Tab1PdvProps> = ({
     }
 
     onSaveTableItems(currentTableNum, updatedItems);
-
-    // Reset input fields
     setQuantity(1);
     setItemObservation('');
     setSearchTerm('');
-    if (searchInputRef.current) {
-      searchInputRef.current.focus();
-    }
+    searchInputRef.current?.focus();
   };
 
   const handleUpdateItemQuantity = (index: number, delta: number) => {
-    const updated = [...currentItems];
-    const item = updated[index];
+    const item = currentItems[index];
     const newQty = item.quantidade + delta;
-
     if (newQty <= 0) {
-      handleRemoveItem(index);
+      openCancel(item);
       return;
     }
-
+    const updated = [...currentItems];
     updated[index] = {
       ...item,
       quantidade: newQty,
@@ -179,15 +180,23 @@ export const Tab1Pdv: React.FC<Tab1PdvProps> = ({
     onSaveTableItems(currentTableNum, updated);
   };
 
-  const handleRemoveItem = (index: number) => {
-    const updated = currentItems.filter((_, i) => i !== index);
-    onSaveTableItems(currentTableNum, updated);
+  const openCancel = (item: OrderItem) => {
+    setCancelTarget(item);
+    setCancelQty(item.quantidade);
+    setCancelMotivo('Erro de lançamento');
+  };
+
+  const confirmCancel = () => {
+    if (!cancelTarget) return;
+    const qty = Math.min(Math.max(1, cancelQty), cancelTarget.quantidade);
+    onCancelItem(currentTableNum, cancelTarget, qty, cancelMotivo);
+    setCancelTarget(null);
   };
 
   const handleClearTable = () => {
     if (currentItems.length === 0) return;
-    if (window.confirm(`Deseja realmente LIMPAR todos os itens da Mesa #${currentTableNum}?`)) {
-      onSaveTableItems(currentTableNum, []);
+    if (window.confirm(`Deseja realmente LIMPAR todos os itens da Mesa #${currentTableNum}? Os itens ficarão registrados como cancelados.`)) {
+      currentItems.forEach((it) => onCancelItem(currentTableNum, it, it.quantidade, 'Limpeza da mesa'));
     }
   };
 
@@ -210,6 +219,11 @@ export const Tab1Pdv: React.FC<Tab1PdvProps> = ({
       alert('Não há itens para pagar nesta mesa!');
       return;
     }
+    if (!caixaAberto) {
+      alert('O caixa está fechado. Abra o caixa antes de receber pagamentos.');
+      onNavigateTab(11);
+      return;
+    }
     onGoToPayment({
       mesa: currentTableNum,
       itens: currentItems,
@@ -218,480 +232,448 @@ export const Tab1Pdv: React.FC<Tab1PdvProps> = ({
     });
   };
 
+  const statusLabel =
+    currentTable?.status === 'ocupada' ? 'Ocupada' : currentTable?.status === 'conta_solicitada' ? 'Conta pedida' : 'Livre';
+  const statusTone = currentTable?.status === 'ocupada' ? 'red' : currentTable?.status === 'conta_solicitada' ? 'amber' : 'green';
+
+  const actionDisabled = currentItems.length === 0;
+
   return (
     <div className="space-y-4">
-      {/* Top Section: Table Selector 1 - 50 + Status info */}
-      <div className="bg-white rounded-xl shadow-xs border border-zinc-200 p-4">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-orange-600 text-white flex items-center justify-center font-bold">
-              <Hash className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="text-xs text-zinc-500 font-semibold uppercase tracking-wider">
-                Mesa / Comanda Ativa
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xl font-extrabold text-zinc-900">
-                  Mesa {currentTableNum}
-                </span>
-                <span
-                  className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
-                    currentTable?.status === 'ocupada'
-                      ? 'bg-rose-100 text-rose-800 border border-rose-300'
-                      : currentTable?.status === 'conta_solicitada'
-                      ? 'bg-amber-100 text-amber-800 border border-amber-300'
-                      : 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                  }`}
-                >
-                  {currentTable?.status === 'ocupada'
-                    ? '● Ocupada'
-                    : currentTable?.status === 'conta_solicitada'
-                    ? '▲ Conta Solicitada'
-                    : '○ Disponível'}
-                </span>
-                {currentTable?.garcom && (
-                  <span className="text-xs text-zinc-500 hidden sm:inline">
-                    &bull; Atendente: <strong>{currentTable.garcom}</strong>
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Quick Dropdown/Menu for Table 1 to 50 */}
-          <div className="flex flex-wrap items-center gap-2">
-            <label className="text-xs font-semibold text-zinc-600">
-              Mudar Mesa (1 - 50):
-            </label>
-            <select
-              value={currentTableNum}
-              onChange={(e) => handleSelectTable(Number(e.target.value))}
-              aria-label="Selecionar número da mesa de 1 a 50"
-              className="px-3 py-1.5 text-sm font-bold bg-zinc-50 border border-zinc-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-orange-500 text-zinc-800"
-            >
-              {Array.from({ length: 50 }, (_, i) => i + 1).map((n) => {
-                const t = tables.find((item) => item.numero === n);
-                const isOccupied = t?.status === 'ocupada';
-                const isRequested = t?.status === 'conta_solicitada';
-                const statusSymbol = isOccupied ? '🔴' : isRequested ? '🟡' : '🟢';
-                const valText = t && t.total > 0 ? ` (${formatCurrency(t.total)})` : '';
-                return (
-                  <option key={n} value={n}>
-                    {statusSymbol} Mesa {n < 10 ? `0${n}` : n} {valText}
-                  </option>
-                );
-              })}
-            </select>
-
-            {/* Quick Mesa 8 navigation */}
-            <button
-              onClick={() => onNavigateTab(8)}
-              className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-zinc-300 bg-zinc-100 hover:bg-zinc-200 text-zinc-700 transition flex items-center gap-1.5"
-            >
-              <span>Mapa do Salão</span>
+      <PageHeader
+        icon={<ShoppingBag className="h-5 w-5" />}
+        title="Frente de Caixa"
+        description="Lance os pedidos da mesa, envie para a cozinha e leve para o pagamento."
+        actions={
+          !caixaAberto ? (
+            <button type="button" onClick={() => onNavigateTab(11)} className={buttonClass('warning', 'sm')}>
+              Caixa fechado — abrir
             </button>
+          ) : (
+            <Badge tone="green">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Caixa aberto
+            </Badge>
+          )
+        }
+      />
 
-            {/* Price query modal button - Amarelo */}
-            <button
-              onClick={() => setIsPriceLookupOpen(true)}
-              className="px-3 py-1.5 text-xs font-bold rounded-lg bg-amber-400 hover:bg-amber-500 text-zinc-950 flex items-center gap-1.5 shadow-xs transition"
-            >
-              <HelpCircle className="w-3.5 h-3.5 text-zinc-900" />
-              <span>Consultar Preço</span>
-            </button>
+      {/* Seletor de mesa */}
+      <div className="flex flex-col gap-3 rounded-2xl border border-zinc-200/80 bg-white p-3 shadow-sm sm:p-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex min-w-0 items-center gap-3">
+          <button
+            type="button"
+            onClick={() => handleSelectTable(currentTableNum - 1)}
+            disabled={currentTableNum <= 1}
+            aria-label="Mesa anterior"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-zinc-200 text-zinc-600 transition hover:bg-zinc-50 disabled:opacity-40"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-lg font-extrabold text-zinc-900 sm:text-xl">Mesa {String(currentTableNum).padStart(2, '0')}</span>
+              <Badge tone={statusTone}>{statusLabel}</Badge>
+              {currentTable?.garcom && (
+                <span className="truncate text-xs text-zinc-500">
+                  · Atendente <strong className="text-zinc-700">{currentTable.garcom}</strong>
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-zinc-500">
+              {totalItemsCount} {totalItemsCount === 1 ? 'item' : 'itens'} na comanda
+            </p>
           </div>
+          <button
+            type="button"
+            onClick={() => handleSelectTable(currentTableNum + 1)}
+            disabled={currentTableNum >= 50}
+            aria-label="Próxima mesa"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-zinc-200 text-zinc-600 transition hover:bg-zinc-50 disabled:opacity-40"
+          >
+            <ChevronRight className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="sr-only" htmlFor="select-mesa">
+            Selecionar mesa
+          </label>
+          <select
+            id="select-mesa"
+            value={currentTableNum}
+            onChange={(e) => handleSelectTable(Number(e.target.value))}
+            className="min-w-0 flex-1 rounded-xl border border-zinc-300 bg-zinc-50 px-3 py-2 text-sm font-semibold text-zinc-800 focus:outline-none focus:ring-2 focus:ring-orange-500 sm:flex-none"
+          >
+            {Array.from({ length: 50 }, (_, i) => i + 1).map((n) => {
+              const t = tables.find((item) => item.numero === n);
+              const symbol = t?.status === 'ocupada' ? '🔴' : t?.status === 'conta_solicitada' ? '🟡' : '🟢';
+              const valText = t && t.total > 0 ? ` · ${formatCurrency(t.total)}` : '';
+              return (
+                <option key={n} value={n}>
+                  {symbol} Mesa {n < 10 ? `0${n}` : n}
+                  {valText}
+                </option>
+              );
+            })}
+          </select>
+          <button type="button" onClick={() => onNavigateTab(8)} className={buttonClass('ghost', 'sm')}>
+            <LayoutGrid className="h-3.5 w-3.5" /> Salão
+          </button>
+          <button type="button" onClick={() => setIsPriceLookupOpen(true)} className={buttonClass('warning', 'sm')}>
+            <HelpCircle className="h-3.5 w-3.5" /> Consultar preço
+          </button>
         </div>
       </div>
 
       {kitchenAlert && (
-        <div className="bg-emerald-50 border border-emerald-300 text-emerald-800 px-4 py-2.5 rounded-xl flex items-center justify-between text-xs font-semibold animate-in fade-in">
-          <div className="flex items-center gap-2">
-            <ChefHat className="w-4 h-4 text-emerald-600" />
-            <span>{kitchenAlert}</span>
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-2.5 text-xs font-semibold text-emerald-800">
+          <div className="flex min-w-0 items-center gap-2">
+            <ChefHat className="h-4 w-4 shrink-0 text-emerald-600" />
+            <span className="truncate">{kitchenAlert}</span>
           </div>
-          <button
-            onClick={() => onNavigateTab(9)}
-            className="text-emerald-700 hover:underline"
-          >
-            Acompanhar na Cozinha &rarr;
+          <button type="button" onClick={() => onNavigateTab(9)} className="shrink-0 text-emerald-700 hover:underline">
+            Acompanhar →
           </button>
         </div>
       )}
 
-      {/* Main 2-Column Layout: Left PDV Items Table, Right Fast Product Catalog */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-        {/* Left Column: Active Order Items (Col 7) */}
-        <div className="lg:col-span-7 bg-white rounded-xl shadow-xs border border-zinc-200 flex flex-col min-h-[580px]">
-          {/* Barcode & Search input bar */}
-          <div className="p-3 bg-zinc-50 border-b border-zinc-200">
-            <div className="flex flex-col sm:flex-row gap-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+        {/* Comanda */}
+        <section className="flex flex-col rounded-2xl border border-zinc-200/80 bg-white shadow-sm lg:col-span-7 lg:min-h-[420px]">
+          <div className="space-y-3 border-b border-zinc-200 bg-zinc-50/70 p-3 sm:p-4">
+            <div className="flex flex-col gap-2 sm:flex-row">
               <div className="relative flex-1">
-                <Search className="w-4 h-4 text-zinc-400 absolute left-3 top-3" />
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
                 <input
                   ref={searchInputRef}
                   type="text"
-                  placeholder="Escanear código EAN ou digitar nome..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 text-sm bg-white border border-zinc-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-orange-500 font-medium text-zinc-800"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && filteredProducts.length > 0) {
+                      e.preventDefault();
+                      handleAddItem(filteredProducts[0]);
+                    }
+                  }}
+                  placeholder="Buscar produto ou bipar EAN (Enter adiciona)"
+                  className="w-full rounded-xl border border-zinc-300 bg-white py-2.5 pl-9 pr-3 text-sm focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/30"
                 />
               </div>
-
-              {/* Quantity Selector: default 1 */}
-              <div className="flex items-center space-x-1.5">
-                <span className="text-xs text-zinc-500 font-semibold">Qtd:</span>
-                <div className="flex items-center border border-zinc-300 rounded-lg bg-white overflow-hidden">
+              <div className="flex items-center gap-2">
+                <div className="flex items-center rounded-xl border border-zinc-300 bg-white">
                   <button
                     type="button"
-                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                    className="px-2.5 py-1.5 hover:bg-zinc-200 text-zinc-700 font-extrabold text-base rounded-lg transition"
+                    onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                    aria-label="Diminuir quantidade"
+                    className="flex h-10 w-10 items-center justify-center text-zinc-600 hover:text-zinc-900"
                   >
-                    -
+                    <Minus className="h-4 w-4" />
                   </button>
-                  <input
-                    type="number"
-                    min="1"
-                    aria-label="Quantidade do item"
-                    value={quantity}
-                    onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-                    className="w-12 text-center text-sm font-bold text-zinc-900 border-x border-zinc-200 py-1 focus:outline-hidden"
-                  />
+                  <span className="w-8 text-center font-mono text-sm font-bold">{quantity}</span>
                   <button
                     type="button"
-                    onClick={() => setQuantity(quantity + 1)}
-                    className="px-2.5 py-1.5 hover:bg-zinc-200 text-zinc-700 font-extrabold text-base rounded-lg transition"
+                    onClick={() => setQuantity((q) => q + 1)}
+                    aria-label="Aumentar quantidade"
+                    className="flex h-10 w-10 items-center justify-center text-zinc-600 hover:text-zinc-900"
                   >
-                    +
+                    <Plus className="h-4 w-4" />
                   </button>
                 </div>
               </div>
             </div>
 
-            {/* Optional observation input */}
-            <div className="mt-2 flex items-center gap-2">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               <input
                 type="text"
-                placeholder="Observação do item (Ex: Sem cebola, gelo e limão, bem passado...)"
                 value={itemObservation}
                 onChange={(e) => setItemObservation(e.target.value)}
-                className="flex-1 px-3 py-1.5 text-xs bg-white border border-zinc-300 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-orange-500 text-zinc-700"
+                placeholder="Observação do item (ex.: sem cebola)"
+                className="rounded-xl border border-zinc-300 bg-white px-3 py-2 text-xs focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/30"
+              />
+              <input
+                type="text"
+                value={mesaObservacaoInput}
+                onChange={(e) => setMesaObservacaoInput(e.target.value)}
+                onBlur={() => onSaveTableObservation?.(currentTableNum, mesaObservacaoInput)}
+                placeholder="Observação da mesa (ex.: aniversário)"
+                className="rounded-xl border border-zinc-300 bg-white px-3 py-2 text-xs focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/30"
               />
             </div>
           </div>
 
-          {/* Quick Mesa Observation */}
-          <div className="px-4 py-2.5 bg-amber-50/60 border-b border-amber-100 flex items-center gap-2">
-            <label htmlFor="mesa-obs" className="text-xs font-extrabold text-amber-800 uppercase tracking-wide whitespace-nowrap">Obs. Mesa:</label>
-            <input
-              id="mesa-obs"
-              type="text"
-              value={mesaObservacaoInput}
-              onChange={(e) => setMesaObservacaoInput(e.target.value)}
-              onBlur={() => { if (onSaveTableObservation) onSaveTableObservation(currentTableNum, mesaObservacaoInput); }}
-              placeholder="Ex: Cliente alérgico, aniversário, sem gelo..."
-              className="flex-1 bg-white border border-amber-200 rounded-lg px-2.5 py-1 text-xs text-zinc-800 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-amber-300 transition"
-            />
-            {currentTable?.observacaoMesa && (
-              <span className="text-[10px] text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded font-medium truncate max-w-[160px]">{currentTable.observacaoMesa}</span>
-            )}
-          </div>
-
-          {/* Table Header */}
-          <div className="grid grid-cols-12 bg-zinc-100 px-4 py-2 text-[11px] font-bold text-zinc-600 uppercase tracking-wider border-b border-zinc-200">
-            <span className="col-span-1 text-center">Qtd</span>
-            <span className="col-span-6">Descrição Mercadoria</span>
-            <span className="col-span-2 text-right">Unitário</span>
-            <span className="col-span-2 text-right">Total</span>
-            <span className="col-span-1 text-center">Ações</span>
-          </div>
-
-          {/* Items List */}
-          <div className="flex-1 overflow-y-auto divide-y divide-zinc-100 min-h-[280px] max-h-[360px]">
+          {/* Itens */}
+          <div className="flex-1 lg:max-h-[calc(100vh-22rem)] lg:overflow-y-auto">
             {currentItems.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 text-zinc-400">
-                <Utensils className="w-12 h-12 text-zinc-300 mb-2 stroke-[1.5]" />
-                <p className="font-semibold text-sm text-zinc-500">
-                  Comanda da Mesa #{currentTableNum} vazia
-                </p>
-                <p className="text-xs text-zinc-400 mt-1">
-                  Selecione os produtos ao lado ou busque por código/nome.
-                </p>
+              <div className="flex h-full min-h-[240px] flex-col items-center justify-center gap-2 p-8 text-center">
+                <Receipt className="h-10 w-10 text-zinc-300" />
+                <p className="font-bold text-zinc-700">Comanda vazia</p>
+                <p className="max-w-xs text-xs text-zinc-400">Toque em um produto do cardápio ou busque pelo nome/EAN para lançar.</p>
               </div>
             ) : (
-              currentItems.map((item, idx) => (
-                <div
-                  key={item.id || idx}
-                  className="grid grid-cols-12 items-center px-4 py-2.5 text-xs hover:bg-orange-50/40 transition-colors"
-                >
-                  <div className="col-span-1 flex items-center justify-center">
-                    <span className="font-bold text-zinc-900 bg-zinc-100 px-2 py-0.5 rounded text-xs border border-zinc-200">
-                      {item.quantidade}
-                    </span>
-                  </div>
-                  <div className="col-span-6 pr-2">
-                    <div className="font-semibold text-zinc-900 leading-tight">
-                      {item.descricao}
+              <ul className="divide-y divide-zinc-100">
+                {currentItems.map((it, idx) => (
+                  <li key={it.id || idx} className="flex items-center gap-3 px-3 py-3 sm:px-4">
+                    <div className="flex shrink-0 items-center rounded-lg border border-zinc-200 bg-white">
+                      <button
+                        type="button"
+                        onClick={() => handleUpdateItemQuantity(idx, -1)}
+                        aria-label={`Diminuir ${it.descricao}`}
+                        className="flex h-8 w-8 items-center justify-center text-zinc-500 hover:text-zinc-900"
+                      >
+                        <Minus className="h-3.5 w-3.5" />
+                      </button>
+                      <span className="w-7 text-center font-mono text-sm font-extrabold">{it.quantidade}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleUpdateItemQuantity(idx, 1)}
+                        aria-label={`Aumentar ${it.descricao}`}
+                        className="flex h-8 w-8 items-center justify-center text-zinc-500 hover:text-zinc-900"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                      </button>
                     </div>
-                    <div className="text-[10px] text-zinc-400 font-mono">
-                      EAN: {item.ean} {item.setor ? `&bull; ${item.setor}` : ''}
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-bold leading-snug text-zinc-900">{it.descricao}</p>
+                      <p className="text-[11px] text-zinc-500">
+                        {formatCurrency(it.precoUnitario)} un. · {it.setor}
+                      </p>
+                      {it.observacao && (
+                        <span className="mt-1 inline-block rounded-md border border-amber-100 bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-800">
+                          {it.observacao}
+                        </span>
+                      )}
                     </div>
-                    {item.observacao && (
-                      <div className="text-[10px] text-amber-700 font-medium">
-                        Obs: {item.observacao}
-                      </div>
-                    )}
-                  </div>
-                  <div className="col-span-2 text-right font-medium text-zinc-600">
-                    {formatCurrency(item.precoUnitario)}
-                  </div>
-                  <div className="col-span-2 text-right font-bold text-zinc-900">
-                    {formatCurrency(item.valorTotal)}
-                  </div>
-                  <div className="col-span-1 flex items-center justify-center space-x-1">
+                    <span className="shrink-0 font-mono text-sm font-extrabold text-zinc-900">{formatCurrency(it.valorTotal)}</span>
                     <button
-                      onClick={() => handleUpdateItemQuantity(idx, -1)}
-                      title="Diminuir"
-                      className="p-1 hover:bg-zinc-200 rounded text-zinc-600"
+                      type="button"
+                      onClick={() => openCancel(it)}
+                      aria-label={`Cancelar ${it.descricao}`}
+                      title="Cancelar item"
+                      className="shrink-0 rounded-lg p-2 text-zinc-400 transition hover:bg-rose-50 hover:text-rose-600"
                     >
-                      <Minus className="w-3 h-3" />
+                      <Trash2 className="h-4 w-4" />
                     </button>
-                    <button
-                      onClick={() => handleRemoveItem(idx)}
-                      title="Excluir item"
-                      className="p-1 hover:bg-rose-100 rounded text-rose-600"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-              ))
+                  </li>
+                ))}
+              </ul>
             )}
           </div>
 
-          {/* Totals and Summary Block */}
-          <div className="bg-gradient-to-r from-zinc-900 via-zinc-900 to-zinc-800 text-white p-5 border-t border-zinc-700/60 shadow-[inset_0_2px_12px_rgba(0,0,0,0.15)]">
-            <div className="flex justify-between items-center mb-3 text-xs text-zinc-400 font-medium">
-              <div className="flex items-center gap-3">
-                <span>Mesa <strong className="text-white">#{currentTableNum}</strong></span>
-                <span className="w-1 h-1 rounded-full bg-zinc-600"></span>
-                <span>Total de Itens: <strong className="text-white">{totalItemsCount} un</strong></span>
-              </div>
-              <span>Comanda Pro v2.0</span>
+          {/* Total e ações (fixas no celular) */}
+          <div className="sticky bottom-0 z-10 space-y-3 border-t border-zinc-200 bg-white p-3 shadow-[0_-8px_24px_-12px_rgba(0,0,0,0.15)] sm:p-4 lg:static lg:shadow-none">
+            <div className="flex items-end justify-between">
+              <span className="text-xs font-bold uppercase tracking-wide text-zinc-500">Total da comanda</span>
+              <span className="font-mono text-2xl font-black tracking-tight text-zinc-900">{formatCurrency(totalValue)}</span>
             </div>
-
-            <div className="flex justify-between items-baseline mb-5">
-              <div>
-                <span className="text-xs font-semibold tracking-widest text-zinc-400 uppercase block mb-0.5">Total a Pagar</span>
-                <span className="text-sm font-medium text-zinc-300">Subtotal + taxa de serviço</span>
-              </div>
-              <span className="text-4xl font-extrabold text-orange-300 tracking-tighter font-mono drop-shadow-md leading-none">
-                {formatCurrency(totalValue)}
-              </span>
-            </div>
-
-            {/* Action Buttons: clean, large, clear */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {/* Verde: Pagar */}
-              <button
-                onClick={handlePay}
-                disabled={currentItems.length === 0}
-                className="py-3 px-3 rounded-xl font-extrabold text-sm bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed text-white flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/20 transition-all"
-              >
-                <DollarSign className="w-4 h-4" />
-                <span>Pagar (F2)</span>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <button type="button" onClick={handlePay} disabled={actionDisabled} className={buttonClass('success', 'md')}>
+                <DollarSign className="h-4 w-4" /> Pagar
               </button>
-
-              {/* Azul: Impressão isolada de cada mesa */}
               <button
+                type="button"
                 onClick={() => onPrintTableTicket(currentTableNum, currentItems)}
-                disabled={currentItems.length === 0}
-                className="py-3 px-3 rounded-xl font-extrabold text-sm bg-sky-600 hover:bg-sky-500 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed text-white flex items-center justify-center gap-2 shadow-lg shadow-sky-900/20 transition-all"
+                disabled={actionDisabled}
+                className={buttonClass('info', 'md')}
               >
-                <Printer className="w-4 h-4" />
-                <span>Imprimir Mesa</span>
+                <Printer className="h-4 w-4" /> Pré-conta
               </button>
-
-              {/* Amarelo/Orange: Enviar Cozinha */}
-              <button
-                onClick={handleSendToKitchenAction}
-                disabled={currentItems.length === 0}
-                className="py-3 px-3 rounded-xl font-extrabold text-sm bg-amber-400 hover:bg-amber-300 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed text-zinc-950 flex items-center justify-center gap-2 shadow-lg shadow-amber-900/10 transition-all"
-              >
-                <ChefHat className="w-4 h-4 text-zinc-950" />
-                <span>P/ Cozinha</span>
+              <button type="button" onClick={handleSendToKitchenAction} disabled={actionDisabled} className={buttonClass('warning', 'md')}>
+                <ChefHat className="h-4 w-4" /> Cozinha
               </button>
-
-              {/* Vermelho: Limpar */}
-              <button
-                onClick={handleClearTable}
-                disabled={currentItems.length === 0}
-                className="py-3 px-3 rounded-xl font-extrabold text-sm bg-rose-600 hover:bg-rose-500 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed text-white flex items-center justify-center gap-2 shadow-lg shadow-rose-900/20 transition-all"
-              >
-                <Trash2 className="w-4 h-4" />
-                <span>Limpar</span>
+              <button type="button" onClick={handleClearTable} disabled={actionDisabled} className={buttonClass('danger', 'md')}>
+                <Ban className="h-4 w-4" /> Limpar
               </button>
             </div>
           </div>
-        </div>
+        </section>
 
-        {/* Right Column: Fast Product Catalog & Quick Add (Col 5) */}
-        <div className="lg:col-span-5 bg-white rounded-xl shadow-xs border border-zinc-200 p-4 flex flex-col">
-          <div className="flex items-center justify-between pb-3 border-b border-zinc-200">
-            <div className="flex items-center space-x-2">
-              <ShoppingBag className="w-4 h-4 text-orange-600" />
-              <h3 className="font-bold text-sm text-zinc-900">
-                Cardápio Rápido / Toque
-              </h3>
-            </div>
-            <span className="text-[11px] text-zinc-500">
-              {filteredProducts.length} itens disponíveis
-            </span>
+        {/* Cardápio */}
+        <section className="flex flex-col rounded-2xl border border-zinc-200/80 bg-white p-3 shadow-sm sm:p-4 lg:col-span-5">
+          <div className="flex items-center justify-between pb-3">
+            <h3 className="flex items-center gap-2 text-sm font-extrabold text-zinc-900">
+              <Tag className="h-4 w-4 text-orange-600" /> Cardápio
+            </h3>
+            <span className="text-[11px] text-zinc-500">{filteredProducts.length} itens</span>
           </div>
 
-          {/* Category Tabs */}
-          <div className="flex items-center gap-1 overflow-x-auto py-2.5 text-xs no-scrollbar">
+          <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {categories.map((cat) => (
               <button
                 key={cat}
+                type="button"
                 onClick={() => setActiveCategory(cat)}
-                className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
-                  activeCategory === cat
-                    ? 'bg-orange-600 text-white shadow-xs'
-                    : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200'
-                }`}
+                className={cn(
+                  'whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-semibold transition',
+                  activeCategory === cat ? 'bg-orange-600 text-white shadow-sm' : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200'
+                )}
               >
                 {cat}
               </button>
             ))}
           </div>
 
-          {/* Products Grid */}
-          <div className="flex-1 overflow-y-auto grid grid-cols-2 gap-2.5 pr-1 max-h-[500px]">
+          <div className="grid min-h-[200px] grid-cols-2 lg:max-h-[calc(100vh-18rem)] gap-2.5 overflow-y-auto pr-1 md:grid-cols-3 xl:grid-cols-2 2xl:grid-cols-3">
+            {filteredProducts.length === 0 && (
+              <p className="col-span-full py-8 text-center text-xs text-zinc-400">Nenhum produto encontrado.</p>
+            )}
             {filteredProducts.map((prod) => (
-              <div
+              <button
                 key={prod.id}
+                type="button"
                 onClick={() => handleAddItem(prod)}
-                className="p-3 rounded-lg border border-zinc-200 hover:border-orange-500 bg-zinc-50/70 hover:bg-orange-50/30 cursor-pointer transition-all flex flex-col justify-between group shadow-2xs hover:shadow-xs"
+                className="group flex min-h-[104px] flex-col justify-between rounded-xl border border-zinc-200 bg-zinc-50/60 p-3 text-left transition hover:border-orange-400 hover:bg-orange-50/40 hover:shadow-sm active:scale-[0.98]"
               >
                 <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-[10px] font-bold text-orange-600 uppercase tracking-wider">
-                      {prod.setor}
-                    </span>
-                    <span className="text-[10px] text-zinc-400 font-mono">
-                      Estq: {prod.estoque}
+                  <div className="mb-1 flex items-center justify-between gap-1">
+                    <span className="truncate text-[10px] font-bold uppercase tracking-wider text-orange-600">{prod.setor}</span>
+                    <span className={cn('shrink-0 font-mono text-[10px]', prod.estoque <= 5 ? 'font-bold text-rose-600' : 'text-zinc-400')}>
+                      {prod.estoque} un
                     </span>
                   </div>
-                  <h4 className="font-bold text-xs text-zinc-900 group-hover:text-orange-900 line-clamp-2">
-                    {prod.descricao}
-                  </h4>
+                  <h4 className="line-clamp-2 text-xs font-bold leading-snug text-zinc-900">{prod.descricao}</h4>
                 </div>
-
-                <div className="mt-3 flex items-center justify-between pt-2 border-t border-zinc-200/80">
-                  <span className="font-extrabold text-sm text-emerald-700">
-                    {formatCurrency(prod.precoVenda)}
+                <div className="mt-2 flex items-center justify-between border-t border-zinc-200/80 pt-2">
+                  <span className="font-mono text-sm font-extrabold text-emerald-700">{formatCurrency(prod.precoVenda)}</span>
+                  <span className="flex h-6 w-6 items-center justify-center rounded-md border border-zinc-200 bg-white text-zinc-700 transition group-hover:border-orange-600 group-hover:bg-orange-600 group-hover:text-white">
+                    <Plus className="h-3.5 w-3.5" />
                   </span>
-                  <div className="w-6 h-6 rounded-md bg-white border border-zinc-200 group-hover:bg-orange-600 group-hover:text-white flex items-center justify-center text-zinc-700 transition">
-                    <Plus className="w-3.5 h-3.5" />
-                  </div>
                 </div>
-              </div>
+              </button>
             ))}
           </div>
-
-          {/* Bottom Bar: Sair button & Quick Switch */}
-          <div className="pt-3 mt-3 border-t border-zinc-200 flex items-center justify-between text-xs text-zinc-500">
-            <span>Comanda Pro &bull; Atendimento Ágil</span>
-            <button
-              onClick={() => onNavigateTab(8)}
-              className="text-zinc-600 hover:text-rose-600 font-semibold flex items-center gap-1 transition"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-              <span>Sair p/ Mesas</span>
-            </button>
-          </div>
-        </div>
+        </section>
       </div>
 
-      {/* Modal Consulta de Mercadoria / Preço (Amarelo) */}
-      {isPriceLookupOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-xl w-full p-5 border border-zinc-200">
-            <div className="flex items-center justify-between pb-3 border-b border-zinc-200">
-              <div className="flex items-center gap-2">
-                <Tag className="w-5 h-5 text-amber-500" />
-                <h3 className="font-bold text-base text-zinc-900">
-                  Consulta Rápida de Mercadoria / Preço
-                </h3>
-              </div>
-              <button
-                onClick={() => setIsPriceLookupOpen(false)}
-                className="p-1 rounded text-zinc-400 hover:text-zinc-700"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="mt-4 relative">
-              <Search className="w-4 h-4 text-zinc-400 absolute left-3 top-3" />
-              <input
-                type="text"
-                autoFocus
-                placeholder="Digite nome do produto ou bipe o código EAN..."
-                value={priceLookupSearch}
-                onChange={(e) => setPriceLookupSearch(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 text-sm bg-zinc-50 border border-zinc-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-amber-500 font-medium"
-              />
-            </div>
-
-            <div className="mt-4 max-h-[340px] overflow-y-auto divide-y divide-zinc-100">
-              {lookupProducts.length === 0 ? (
-                <div className="text-center py-8 text-zinc-400 text-xs">
-                  Nenhum produto encontrado com o termo pesquisado.
-                </div>
-              ) : (
-                lookupProducts.map((p) => (
-                  <div
-                    key={p.id}
-                    className="py-2.5 flex items-center justify-between hover:bg-zinc-50 px-2 rounded"
-                  >
-                    <div>
-                      <div className="font-bold text-xs text-zinc-900">{p.descricao}</div>
-                      <div className="text-[11px] text-zinc-500 font-mono">
-                        Cód EAN: {p.ean} &bull; Setor: {p.setor} &bull; Estoque: {p.estoque} UN
-                      </div>
-                    </div>
-                    <div className="text-right flex items-center gap-3">
-                      <span className="font-extrabold text-base text-emerald-700">
-                        {formatCurrency(p.precoVenda)}
-                      </span>
-                      <button
-                        onClick={() => {
-                          handleAddItem(p, 1);
-                          setIsPriceLookupOpen(false);
-                        }}
-                        className="px-2.5 py-1 text-xs font-bold rounded bg-emerald-600 hover:bg-emerald-700 text-white"
-                      >
-                        + Lançar
-                      </button>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-
-            <div className="mt-4 pt-3 border-t border-zinc-200 flex justify-end">
-              <button
-                onClick={() => setIsPriceLookupOpen(false)}
-                className="px-4 py-2 text-xs font-bold rounded-lg bg-zinc-200 hover:bg-zinc-300 text-zinc-800"
-              >
-                Fechar Consulta
-              </button>
-            </div>
+      {/* Modal: cancelamento de item */}
+      <Modal
+        open={cancelTarget !== null}
+        onClose={() => setCancelTarget(null)}
+        title="Cancelar item"
+        icon={<Ban className="h-5 w-5 text-rose-600" />}
+        size="sm"
+        footer={
+          <div className="flex justify-end gap-2">
+            <button type="button" onClick={() => setCancelTarget(null)} className={buttonClass('ghost', 'md')}>
+              Voltar
+            </button>
+            <button type="button" onClick={confirmCancel} className={buttonClass('danger', 'md')}>
+              <CheckCircle2 className="h-4 w-4" /> Confirmar cancelamento
+            </button>
           </div>
+        }
+      >
+        {cancelTarget && (
+          <div className="space-y-4">
+            <div className="rounded-xl bg-zinc-50 p-3">
+              <p className="text-sm font-bold text-zinc-900">{cancelTarget.descricao}</p>
+              <p className="text-xs text-zinc-500">
+                Mesa {currentTableNum} · {formatCurrency(cancelTarget.precoUnitario)} un.
+              </p>
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-bold uppercase tracking-wide text-zinc-600">Quantidade a cancelar</label>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setCancelQty((q) => Math.max(1, q - 1))}
+                  className="flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-300 hover:bg-zinc-50"
+                  aria-label="Diminuir"
+                >
+                  <Minus className="h-4 w-4" />
+                </button>
+                <span className="w-12 text-center font-mono text-lg font-extrabold">{cancelQty}</span>
+                <button
+                  type="button"
+                  onClick={() => setCancelQty((q) => Math.min(cancelTarget.quantidade, q + 1))}
+                  className="flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-300 hover:bg-zinc-50"
+                  aria-label="Aumentar"
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
+                <span className="text-xs text-zinc-500">de {cancelTarget.quantidade}</span>
+              </div>
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-bold uppercase tracking-wide text-zinc-600">Motivo</label>
+              <select
+                value={cancelMotivo}
+                onChange={(e) => setCancelMotivo(e.target.value as CancelamentoMotivo)}
+                className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-sm font-semibold"
+              >
+                {MOTIVOS_CANCELAMENTO.map((m) => (
+                  <option key={m} value={m}>
+                    {m}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <p className="text-[11px] text-zinc-500">
+              O cancelamento fica registrado no caixa com o nome do operador ({config.usuarioAtual}).
+            </p>
+          </div>
+        )}
+      </Modal>
+
+      {/* Modal: consulta de preço */}
+      <Modal
+        open={isPriceLookupOpen}
+        onClose={() => setIsPriceLookupOpen(false)}
+        title="Consulta de preço"
+        icon={<Tag className="h-5 w-5 text-amber-500" />}
+        size="md"
+        footer={
+          <div className="flex justify-end">
+            <button type="button" onClick={() => setIsPriceLookupOpen(false)} className={buttonClass('ghost', 'md')}>
+              Fechar
+            </button>
+          </div>
+        }
+      >
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+          <input
+            type="text"
+            autoFocus
+            placeholder="Nome do produto ou EAN"
+            value={priceLookupSearch}
+            onChange={(e) => setPriceLookupSearch(e.target.value)}
+            className="w-full rounded-xl border border-zinc-300 bg-zinc-50 py-2.5 pl-9 pr-3 text-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/30"
+          />
         </div>
-      )}
+        <div className="mt-3 divide-y divide-zinc-100">
+          {lookupProducts.length === 0 ? (
+            <p className="py-8 text-center text-xs text-zinc-400">Nenhum produto encontrado.</p>
+          ) : (
+            lookupProducts.map((p) => (
+              <div key={p.id} className="flex items-center justify-between gap-3 py-2.5">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-bold text-zinc-900">{p.descricao}</p>
+                  <p className="font-mono text-[11px] text-zinc-500">
+                    EAN {p.ean} · {p.setor} · Estoque {p.estoque}
+                  </p>
+                </div>
+                <div className="flex shrink-0 items-center gap-3">
+                  <span className="font-mono text-sm font-extrabold text-emerald-700">{formatCurrency(p.precoVenda)}</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleAddItem(p, 1);
+                      setIsPriceLookupOpen(false);
+                    }}
+                    className={buttonClass('success', 'sm')}
+                  >
+                    <Plus className="h-3.5 w-3.5" /> Lançar
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </Modal>
+
     </div>
   );
 };

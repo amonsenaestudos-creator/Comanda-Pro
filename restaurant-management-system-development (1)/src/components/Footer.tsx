@@ -11,7 +11,7 @@ export const Footer: React.FC<FooterProps> = () => {
       <div className="max-w-[1920px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-center sm:text-left">
         <div className="flex items-center space-x-2">
           <ShieldCheck className="w-4 h-4 text-orange-500" />
-          <span className="font-medium text-zinc-300">Comanda Pro v2.0 - 2026</span>
+          <span className="font-medium text-zinc-300">Comanda Pro v2.1 - 2026</span>
           <span className="hidden md:inline text-zinc-600">|</span>
           <span className="text-zinc-400">
             Todos os direitos reservados:{' '}

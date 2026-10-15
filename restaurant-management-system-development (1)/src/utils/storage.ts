@@ -236,6 +236,7 @@ export const INITIAL_EMPLOYEES: Employee[] = [
     cpf: '123.456.789-10',
     funcao: 'Operador de Caixa & Gerente',
     dataAdmissao: '2023-03-15',
+    pin: '1234',
   },
   {
     id: 'emp-2',
@@ -246,6 +247,7 @@ export const INITIAL_EMPLOYEES: Employee[] = [
     cpf: '234.567.890-21',
     funcao: 'Garçom / Atendente',
     dataAdmissao: '2024-01-10',
+    pin: '2222',
   },
   {
     id: 'emp-3',
@@ -256,6 +258,7 @@ export const INITIAL_EMPLOYEES: Employee[] = [
     cpf: '345.678.901-32',
     funcao: 'Garçom / Salão',
     dataAdmissao: '2024-06-01',
+    pin: '3333',
   },
   {
     id: 'emp-4',
@@ -266,6 +269,7 @@ export const INITIAL_EMPLOYEES: Employee[] = [
     cpf: '456.789.012-43',
     funcao: 'Chefe de Cozinha',
     dataAdmissao: '2022-11-20',
+    pin: '4444',
   },
 ];
 
@@ -775,6 +779,30 @@ const STORAGE_KEYS = {
   SUPPLIERS: 'comandapro_suppliers_v2',
   APPS: 'comandapro_apps_v2',
   KITCHEN_ORDERS: 'comandapro_kitchen_orders_v2',
+  CAIXA_SESSIONS: 'comandapro_caixa_sessions_v2',
+  CANCELLATIONS: 'comandapro_cancellations_v2',
+  /** Operador logado. Fica em sessionStorage: some ao fechar a aba do navegador. */
+  OPERATOR_SESSION: 'comandapro_operator_session_v2',
+};
+
+/** Lê um valor do sessionStorage (dura só enquanto a aba estiver aberta). */
+export const getSessionStored = <T>(key: string, defaultVal: T): T => {
+  try {
+    const raw = sessionStorage.getItem(key);
+    if (!raw) return defaultVal;
+    return JSON.parse(raw);
+  } catch {
+    return defaultVal;
+  }
+};
+
+export const setSessionStored = <T>(key: string, val: T | null): void => {
+  try {
+    if (val === null) sessionStorage.removeItem(key);
+    else sessionStorage.setItem(key, JSON.stringify(val));
+  } catch (err) {
+    console.error('Erro ao salvar na sessão:', err);
+  }
 };
 
 export const getStored = <T>(key: string, defaultVal: T): T => {

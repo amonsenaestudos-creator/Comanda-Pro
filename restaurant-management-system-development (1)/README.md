@@ -5,6 +5,21 @@ Para controle de acesso, liberação e bloqueio de clientes, o sistema consulta 
 
 ---
 
+## 0. Uso (equipe e caixa)
+
+O Comanda Pro é um sistema **exclusivo para a equipe do estabelecimento e o caixa**. Não há tela voltada ao cliente.
+
+- **Entrada da equipe:** ao abrir o sistema, selecione o colaborador e digite a senha de acesso (4 a 6 números). A senha é cadastrada em **Cadastros > Colaboradores** (campo *Senha de acesso*). Colaboradores sem senha entram sem digitar nada. A sessão some ao fechar a aba.
+- **Caixa (aba 11, tecla F11):** abra o caixa com o fundo de troco. Enquanto estiver fechado, não é possível concluir vendas. Registre **sangrias** e **suprimentos** e, ao final do turno, **feche o caixa** informando o dinheiro contado. O sistema calcula a diferença (sobra/falta) e guarda o histórico de fechamentos.
+- **Mesas (aba 8):** além de abrir, pedir conta e liberar, a comanda pode ser **transferida** para outra mesa livre.
+- **Cancelamento de itens (PDV):** cancele parte ou o total de um item informando o **motivo**. Os cancelamentos aparecem no caixa do turno.
+- **Dividir a conta (Pagamento):** informe o número de pessoas e clique em *Dividir* para preencher a parcela de cada uma.
+- **Atalhos:** F1 (PDV), F2 (Pagamento), F11 (Caixa).
+
+> Observação: a senha é guardada no próprio navegador do caixa (como os demais dados do sistema). Ela controla o uso do sistema no dia a dia, mas não substitui um controle de acesso de servidor.
+
+---
+
 ## 1. Como Funciona
 
 1. **Localmente:** Os clientes operam o PDV offline/localmente com rapidez sem custos de servidor.

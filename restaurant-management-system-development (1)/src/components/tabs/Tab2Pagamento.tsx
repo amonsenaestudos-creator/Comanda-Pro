@@ -14,6 +14,8 @@ import {
   Smartphone,
   Copy,
   Check,
+  Users,
+  Lock,
 } from 'lucide-react';
 import {
   AppConfig,
@@ -37,6 +39,8 @@ interface Tab2PagamentoProps {
   onFinishSale: (sale: Sale) => void;
   onNavigateTab: (tabId: number) => void;
   onOpenReceiptPrint: (sale: Sale) => void;
+  /** Id do caixa aberto. Sem caixa aberto não há como concluir a venda. */
+  caixaId?: string;
 }
 
 export const Tab2Pagamento: React.FC<Tab2PagamentoProps> = ({
@@ -46,7 +50,9 @@ export const Tab2Pagamento: React.FC<Tab2PagamentoProps> = ({
   onFinishSale,
   onNavigateTab,
   onOpenReceiptPrint,
+  caixaId,
 }) => {
+  const caixaAberto = Boolean(caixaId);
   const [comandaNumero, setComandaNumero] = useState<string>('');
   const [atendente, setAtendente] = useState<string>(
     currentOrder?.atendente || config.usuarioAtual || 'Carlos Eduardo Silva'
@@ -62,6 +68,9 @@ export const Tab2Pagamento: React.FC<Tab2PagamentoProps> = ({
 
   // Discount
   const [discountPercent, setDiscountPercent] = useState<number>(0);
+
+  // Divisão igualitária da conta
+  const [pessoas, setPessoas] = useState<number>(1);
 
   // Partial payments
   const [splits, setSplits] = useState<PaymentSplit[]>([]);
@@ -164,9 +173,21 @@ export const Tab2Pagamento: React.FC<Tab2PagamentoProps> = ({
     }
   };
 
+  const dividirIgualmente = () => {
+    if (remaining <= 0) return;
+    // Cada pessoa paga a parte igual; a última parcela recebe o centavo que sobrar.
+    const parte = Math.floor((remaining / pessoas) * 100) / 100;
+    setInputAmount(parte.toFixed(2));
+  };
+
   const handleFinishSale = () => {
     if (!currentOrder || currentOrder.itens.length === 0) {
       alert('Nenhum item na comanda atual para finalizar!');
+      return;
+    }
+    if (!caixaId) {
+      alert('O caixa está fechado. Abra o caixa antes de concluir vendas.');
+      onNavigateTab(11);
       return;
     }
 
@@ -205,6 +226,7 @@ export const Tab2Pagamento: React.FC<Tab2PagamentoProps> = ({
       clienteNome: clienteNome || undefined,
       clienteDoc: clienteDoc || undefined,
       impostosEstimados: impostos,
+      caixaId,
     };
 
     onFinishSale(newSale);
@@ -227,7 +249,7 @@ export const Tab2Pagamento: React.FC<Tab2PagamentoProps> = ({
           Nenhuma Venda Selecionada para Pagamento
         </h3>
         <p className="text-xs text-zinc-500 mb-6">
-          Vá para a Frente de Caixa (Aba 1) ou Gestão de Mesas (Aba 8), selecione a mesa ou adicione itens e clique no botão verde <strong>"Pagar"</strong>.
+          Vá para a Frente de Caixa ou para o Salão (Mesas), selecione a mesa ou adicione itens e clique no botão verde <strong>"Pagar"</strong>.
         </p>
         <div className="flex justify-center gap-3">
           <button
@@ -250,6 +272,22 @@ export const Tab2Pagamento: React.FC<Tab2PagamentoProps> = ({
 
   return (
     <div className="space-y-4">
+      {!caixaAberto && (
+        <div className="flex flex-col gap-2 rounded-xl border border-rose-300 bg-rose-50 px-4 py-3 text-rose-900 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-2 text-sm font-semibold">
+            <Lock className="h-4 w-4 shrink-0" />
+            <span>Caixa fechado. Abra o caixa para concluir esta venda.</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => onNavigateTab(11)}
+            className="self-start rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-rose-700 sm:self-auto"
+          >
+            Ir para o Caixa
+          </button>
+        </div>
+      )}
+
       {/* Top Banner Navigation & Order Context */}
       <div className="bg-white rounded-xl shadow-xs border border-zinc-200 p-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center space-x-3">
@@ -259,7 +297,7 @@ export const Tab2Pagamento: React.FC<Tab2PagamentoProps> = ({
             className="px-3 py-2 text-xs font-bold rounded-lg bg-sky-600 hover:bg-sky-700 text-white flex items-center gap-1.5 shadow-xs transition"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span>Voltar PDV (Aba 1)</span>
+            <span>Voltar ao PDV</span>
           </button>
 
           <div>
@@ -536,11 +574,34 @@ export const Tab2Pagamento: React.FC<Tab2PagamentoProps> = ({
                 />
               </div>
 
+              <div className="flex w-full flex-wrap items-end gap-2 border-t border-zinc-200 pt-3 sm:w-auto sm:border-0 sm:pt-4">
+                <div className="flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-2 py-1.5">
+                  <Users className="h-3.5 w-3.5 text-zinc-500" />
+                  <input
+                    type="number"
+                    min={1}
+                    max={20}
+                    value={pessoas}
+                    aria-label="Número de pessoas para dividir a conta"
+                    onChange={(e) => setPessoas(Math.min(20, Math.max(1, parseInt(e.target.value, 10) || 1)))}
+                    className="w-12 bg-transparent text-center text-xs font-bold focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={dividirIgualmente}
+                    disabled={remaining <= 0}
+                    className="text-[11px] font-bold text-orange-700 hover:underline disabled:opacity-40"
+                  >
+                    Dividir
+                  </button>
+                </div>
+              </div>
+
               <div className="pt-4">
                 <button
                   type="button"
                   onClick={handleAddSplit}
-                  disabled={remaining <= 0 && splits.length > 0}
+                  disabled={(remaining <= 0 && splits.length > 0) || !caixaAberto}
                   className="px-4 py-2 text-xs font-bold rounded-lg bg-orange-600 hover:bg-orange-700 text-white flex items-center gap-1 shadow-xs disabled:opacity-50"
                 >
                   <Plus className="w-3.5 h-3.5" />
@@ -663,7 +724,8 @@ export const Tab2Pagamento: React.FC<Tab2PagamentoProps> = ({
               <button
                 type="button"
                 onClick={handleFinishSale}
-                className="col-span-2 sm:col-span-1 py-3 px-4 rounded-xl font-extrabold text-sm bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white flex items-center justify-center gap-2 shadow-md transition"
+                disabled={!caixaAberto}
+                className="col-span-2 sm:col-span-1 py-3 px-4 rounded-xl font-extrabold text-sm bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white flex items-center justify-center gap-2 shadow-md transition disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <CheckCircle2 className="w-5 h-5" />
                 <span>Concluir Venda</span>
