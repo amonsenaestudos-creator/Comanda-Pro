@@ -414,7 +414,7 @@ export function App() {
       <Header
         config={config}
         tables={tables}
-        licenseExpiresAt={accessLicense.license.expiresAt}
+        licenseVerifiedAt={accessLicense.license.verifiedAt}
         licenseOffline={accessLicense.offline}
       />
 

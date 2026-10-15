@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { UtensilsCrossed } from 'lucide-react';
+import { cn } from '../utils/cn';
 import { AppConfig, Table } from '../types';
 import { formatDateShort, formatTimeShort } from '../utils/formatters';
 
 interface HeaderProps {
   config: AppConfig;
   tables: Table[];
-  licenseExpiresAt: string;
+  /** Data/hora (ISO) da última confirmação de `ativa: true` no servidor. */
+  licenseVerifiedAt: string | null;
   licenseOffline: boolean;
 }
 
@@ -14,7 +16,12 @@ interface HeaderProps {
  * Barra superior enxuta: identidade do caixa, o número que importa (mesas
  * ocupadas / contas pedidas), relógio e operador. Navegação ficou no menu.
  */
-export const Header: React.FC<HeaderProps> = ({ config, tables, licenseExpiresAt, licenseOffline }) => {
+export const Header: React.FC<HeaderProps> = ({
+  config,
+  tables,
+  licenseVerifiedAt,
+  licenseOffline,
+}) => {
   const [now, setNow] = useState<Date>(() => new Date());
 
   useEffect(() => {
@@ -25,9 +32,11 @@ export const Header: React.FC<HeaderProps> = ({ config, tables, licenseExpiresAt
   const occupiedCount = tables.filter((t) => t.status === 'ocupada').length;
   const billRequestedCount = tables.filter((t) => t.status === 'conta_solicitada').length;
 
-  const licenceLabel = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short' }).format(
-    new Date(licenseExpiresAt)
-  );
+  const verificacaoLabel = licenseVerifiedAt
+    ? new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(
+        new Date(licenseVerifiedAt)
+      )
+    : 'não confirmada';
 
   return (
     <header className="bg-zinc-950 text-zinc-200 border-b border-zinc-800 sticky top-0 z-40 select-none">
@@ -71,14 +80,17 @@ export const Header: React.FC<HeaderProps> = ({ config, tables, licenseExpiresAt
             className="hidden md:flex items-center gap-1.5 text-[11px] text-zinc-400"
             title={
               licenseOffline
-                ? `Caixa liberado offline até ${licenceLabel}.`
-                : `Licença verificada. Válida até ${licenceLabel}.`
+                ? `Sem resposta do servidor. Caixa liberado pela tolerância offline. Última confirmação: ${verificacaoLabel}.`
+                : `Licença confirmada no servidor em ${verificacaoLabel} (chave com ativa: true).`
             }
           >
             <span
-              className={`w-1.5 h-1.5 rounded-full ${ licenseOffline ? 'bg-amber-400' : 'bg-emerald-500' }`}
+              className={cn(
+                'w-1.5 h-1.5 rounded-full',
+                licenseOffline ? 'bg-amber-400' : 'bg-emerald-500'
+              )}
             />
-            <span className="font-mono">{licenceLabel}</span>
+            <span>{licenseOffline ? 'Licença offline' : 'Licença ativa'}</span>
           </div>
 
           <div className="flex items-center gap-2">

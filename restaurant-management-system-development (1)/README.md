@@ -8,10 +8,19 @@ Para controle de acesso, liberação e bloqueio de clientes, o sistema consulta 
 ## 1. Como Funciona
 
 1. **Localmente:** Os clientes operam o PDV offline/localmente com rapidez sem custos de servidor.
-2. **Checagem de Licença:** Ao abrir o sistema ou a cada 5 minutos, o Comanda Pro consulta o Firestore usando a chave de acesso do restaurante (ex: `CP-CLIENTE-01` ou CNPJ).
-3. **Bloqueio em Tempo Real:** Se você marcar `ativa: false` ou `bloqueada: true` no Firebase Console, o sistema trava a tela do cliente imediatamente com aviso de bloqueio.
-4. **Vencimento Automático:** Se a data do campo `validade` tiver passado, o sistema bloqueia o acesso solicitando renovação.
-5. **Tolerância Offline:** Se a internet cair durante o expediente, caixas já ativados continuam funcionando por até 24 horas.
+2. **Única regra de liberação:** o campo **`ativa`** do documento. `ativa: true` → o caixa
+   funciona; `ativa: false` (ou campo ausente / qualquer outro valor) → o caixa não funciona e
+   fica na tela de bloqueio.
+3. **Sem data de validade:** o sistema **não** consulta timestamp nenhum. Não existe bloqueio por
+   vencimento nem renovação automática por data — quem liga e desliga o caixa é apenas o booleano
+   `ativa`. Se existir um campo `validade` no documento, ele é ignorado.
+4. **Checagem:** ao abrir o sistema, a cada **2 minutos**, e sempre que a janela do caixa volta a
+   ficar visível ou recebe foco, o Comanda Pro relê `licencas/{chave}` no Firestore. Trocou
+   `ativa` para `false` no Firebase Console? O caixa bloqueia sozinho na próxima checagem.
+5. **Kill switch extra (opcional):** `bloqueada: true` também trava, mesmo com `ativa: true`.
+6. **Tolerância Offline:** se a internet cair durante o expediente, caixas já liberados continuam
+   funcionando por até **24 horas** desde a última confirmação; depois disso é preciso reconectar
+   para validar de novo. (É tolerância de conexão, não validade da licença.)
 
 ---
 
@@ -59,20 +68,44 @@ No próprio **Firebase Console > Firestore Database**:
 ### Criar uma Licença para um Cliente
 1. Clique em **Iniciar coleção** com o ID: `licencas`.
 2. No **ID do documento**, coloque a chave do cliente em letras maiúsculas (exemplo: `CP-REST-BAHIA` ou o CNPJ do cliente `12345678000190`).
-3. Adicione os campos:
-   - `ativa` (tipo: `boolean`): `true`
-   - `cliente` (tipo: `string`): `"Restaurante Exemplo"`
-   - `validade` (tipo: `timestamp` ou `string` ISO): `2026-11-30T23:59:59Z`
+3. Adicione os campos (só estes três importam):
+   - `ativa` (tipo: `boolean`): **`true`** — é o interruptor do caixa
+   - `cliente` (tipo: `string`): `"Restaurante Exemplo"` — nome exibido no topo do sistema
+   - `motivoBloqueio` (tipo: `string`, opcional): mensagem mostrada na tela quando `ativa` for `false`
+
+   > Não precisa criar campo de validade/data. Se você criar um `validade`, o sistema ignora.
 
 ### Como Bloquear um Cliente Imediatamente
-Basta alterar no documento do cliente:
+No documento do cliente, deixe:
 - `ativa`: `false`
-- `motivoBloqueio`: `"Mensalidade pendente. Entre em contato com a Conta Bahia."`
+- `motivoBloqueio`: `"Mensalidade pendente. Entre em contato com a Conta Bahia."` (opcional)
 
-Na próxima verificação (ou ao recarregar a página), o Comanda Pro bloqueia a tela e exibe a mensagem configurada.
+Em até 2 minutos (ou ao recarregar a página / voltar para a janela do caixa) o Comanda Pro trava a
+tela e mostra a mensagem configurada. Para bloqueio manual de uma máquina específica, apague o
+`localStorage` do navegador daquele caixa.
 
-### Como Renovar um Cliente
-Basta atualizar o campo `validade` para o próximo mês (ex: `2026-12-31T23:59:59Z`) e garantir que `ativa: true`.
+### Como Reativar um Cliente
+Troque `ativa` de volta para `true`. Não há data para atualizar, nem renovação para registrar: o
+caixa volta a funcionar sozinho na próxima checagem.
+
+### Tabela de Decisão (regra completa do app)
+
+| Documento em `licencas/{chave}` | O caixa... |
+| --- | --- |
+| `ativa: true` | **funciona** — mesmo que exista um `validade` atrasado |
+| `ativa: false` | bloqueado: "Esta licença está desativada (ativa: false)..." |
+| `ativa` ausente | bloqueado (mesma mensagem) |
+| `ativa: "false"` / `0` / `""` | bloqueado |
+| `ativa: 1` / `"true"` / `"sim"` | funciona (o app é tolerante a tipos) |
+| `bloqueada: true` (com `ativa: true`) | bloqueado — kill switch da administração |
+| `motivoBloqueio: "..."` (bloqueado) | mostra exatamente esse texto |
+| documento inexistente | "Chave de licença não encontrada no servidor..." |
+| sem internet | funciona por até 24h desde a última confirmação, depois exige reconexão |
+
+> A liberação é lida **direto do documento** no Firestore. O caminho opcional por Cloud Function
+> (`functions/`, com `ativarLicenca`, `assinaturas`, `deviceBindings` e período mensal) não é
+> chamado por esta versão do app — ele continua lá apenas como alternativa de ativação com App
+> Check e limite de aparelhos, caso você queira migrar para ele no futuro.
 
 ---
 
