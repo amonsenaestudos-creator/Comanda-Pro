@@ -111,10 +111,3 @@ Atalhos de teclado na Frente de Caixa:
 
 > Ao ativar o **Modo Caixa**, se o operador estiver em uma tela que foi
 > escondida, o sistema volta sozinho para a Frente de Caixa.
-
-### Testando localmente sem Firebase
-
-`npm run dev` **sem** as variáveis `VITE_FIREBASE_*` abre o sistema em *modo
-demonstração* (aparece o selo "Demonstração" no topo) só para permitir testar
-as telas. O `npm run build` usado no GitHub Pages não recebe esse atalho e
-continua exigindo a chave de ativação.

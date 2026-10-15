@@ -133,7 +133,7 @@ export const Tab7Graficos: React.FC<Tab7GraficosProps> = ({
   return (
     <div className="space-y-4">
       {/* Top Banner */}
-      <div className="bg-white rounded-xl shadow-xs border border-zinc-200 p-4">
+      <div className="cp-card p-4">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div>
             <h2 className="text-base font-extrabold text-zinc-900 flex items-center gap-2">
@@ -150,7 +150,7 @@ export const Tab7Graficos: React.FC<Tab7GraficosProps> = ({
               <button
                 onClick={() => setTimeFilter('hoje')}
                 className={`px-3 py-1 rounded-md transition ${
-                  timeFilter === 'hoje' ? 'bg-white shadow-xs text-orange-600 font-bold' : 'text-zinc-600'
+                  timeFilter === 'hoje' ? 'bg-white text-orange-600 font-bold' : 'text-zinc-600'
                 }`}
               >
                 Hoje
@@ -158,7 +158,7 @@ export const Tab7Graficos: React.FC<Tab7GraficosProps> = ({
               <button
                 onClick={() => setTimeFilter('semana')}
                 className={`px-3 py-1 rounded-md transition ${
-                  timeFilter === 'semana' ? 'bg-white shadow-xs text-orange-600 font-bold' : 'text-zinc-600'
+                  timeFilter === 'semana' ? 'bg-white text-orange-600 font-bold' : 'text-zinc-600'
                 }`}
               >
                 Semanal
@@ -166,7 +166,7 @@ export const Tab7Graficos: React.FC<Tab7GraficosProps> = ({
               <button
                 onClick={() => setTimeFilter('mes')}
                 className={`px-3 py-1 rounded-md transition ${
-                  timeFilter === 'mes' ? 'bg-white shadow-xs text-orange-600 font-bold' : 'text-zinc-600'
+                  timeFilter === 'mes' ? 'bg-white text-orange-600 font-bold' : 'text-zinc-600'
                 }`}
               >
                 Mensal
@@ -174,7 +174,7 @@ export const Tab7Graficos: React.FC<Tab7GraficosProps> = ({
               <button
                 onClick={() => setTimeFilter('tudo')}
                 className={`px-3 py-1 rounded-md transition ${
-                  timeFilter === 'tudo' ? 'bg-white shadow-xs text-orange-600 font-bold' : 'text-zinc-600'
+                  timeFilter === 'tudo' ? 'bg-white text-orange-600 font-bold' : 'text-zinc-600'
                 }`}
               >
                 Geral
@@ -219,7 +219,7 @@ export const Tab7Graficos: React.FC<Tab7GraficosProps> = ({
       {/* Row 1: Gráfico Meios de Pagamento (%) & Gráfico por Setor (%) */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Gráfico Meios de Pagamento */}
-        <div className="bg-white rounded-xl shadow-xs border border-zinc-200 p-5">
+        <div className="cp-card p-5">
           <div className="flex items-center justify-between pb-3 border-b border-zinc-200 mb-4">
             <div className="flex items-center gap-2">
               <PieChart className="w-5 h-5 text-orange-600" />
@@ -271,7 +271,7 @@ export const Tab7Graficos: React.FC<Tab7GraficosProps> = ({
         </div>
 
         {/* Gráfico Setores (%) */}
-        <div className="bg-white rounded-xl shadow-xs border border-zinc-200 p-5">
+        <div className="cp-card p-5">
           <div className="flex items-center justify-between pb-3 border-b border-zinc-200 mb-4">
             <div className="flex items-center gap-2">
               <Layers className="w-5 h-5 text-orange-600" />
@@ -326,7 +326,7 @@ export const Tab7Graficos: React.FC<Tab7GraficosProps> = ({
       {/* Row 2: Vendas Diárias & Vendas Semanal */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         {/* Vendas Diárias (Horários) Col 5 */}
-        <div className="lg:col-span-5 bg-white rounded-xl shadow-xs border border-zinc-200 p-5">
+        <div className="cp-card lg:col-span-5 p-5">
           <div className="flex items-center justify-between pb-3 border-b border-zinc-200 mb-4">
             <div className="flex items-center gap-2">
               <Calendar className="w-5 h-5 text-orange-600" />
@@ -359,7 +359,7 @@ export const Tab7Graficos: React.FC<Tab7GraficosProps> = ({
         </div>
 
         {/* Vendas Semanal (Seg a Dom) Col 7 */}
-        <div className="lg:col-span-7 bg-white rounded-xl shadow-xs border border-zinc-200 p-5">
+        <div className="cp-card lg:col-span-7 p-5">
           <div className="flex items-center justify-between pb-3 border-b border-zinc-200 mb-4">
             <div className="flex items-center gap-2">
               <TrendingUp className="w-5 h-5 text-orange-600" />
@@ -386,9 +386,7 @@ export const Tab7Graficos: React.FC<Tab7GraficosProps> = ({
                     </span>
                     <span
                       className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${
-                        w.pct >= 100
-                          ? 'bg-emerald-100 text-emerald-800'
-                          : 'bg-zinc-100 text-zinc-700'
+                        w.pct >= 100 ? 'bg-emerald-100 text-emerald-800' : 'bg-zinc-100 text-zinc-700'
                       }`}
                     >
                       {w.pct}%
@@ -412,7 +410,7 @@ export const Tab7Graficos: React.FC<Tab7GraficosProps> = ({
       {/* Row 3: Gráfico Vendas Mensal & Gráfico Dez Mercadorias Mais Vendidas */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         {/* Vendas Mensal (Col 4) */}
-        <div className="lg:col-span-4 bg-white rounded-xl shadow-xs border border-zinc-200 p-5">
+        <div className="cp-card lg:col-span-4 p-5">
           <div className="flex items-center justify-between pb-3 border-b border-zinc-200 mb-4">
             <div className="flex items-center gap-2">
               <DollarSign className="w-5 h-5 text-orange-600" />
@@ -444,7 +442,7 @@ export const Tab7Graficos: React.FC<Tab7GraficosProps> = ({
         </div>
 
         {/* Dez Mercadorias Mais Vendidas (Col 8) */}
-        <div className="lg:col-span-8 bg-white rounded-xl shadow-xs border border-zinc-200 p-5">
+        <div className="cp-card lg:col-span-8 p-5">
           <div className="flex items-center justify-between pb-3 border-b border-zinc-200 mb-3">
             <div className="flex items-center gap-2">
               <Award className="w-5 h-5 text-amber-500" />
@@ -474,13 +472,13 @@ export const Tab7Graficos: React.FC<Tab7GraficosProps> = ({
                       <div className="flex items-center gap-2">
                         <span
                           className={`w-5 h-5 rounded-full flex items-center justify-center font-bold text-[10px] ${
-                            idx === 0
-                              ? 'bg-amber-400 text-zinc-950 font-black'
-                              : idx === 1
-                              ? 'bg-zinc-300 text-zinc-900'
-                              : idx === 2
-                              ? 'bg-amber-700 text-white'
-                              : 'bg-zinc-200 text-zinc-700'
+              idx === 0
+               ? 'bg-amber-400 text-zinc-950 font-black'
+               : idx === 1
+               ? 'bg-zinc-300 text-zinc-900'
+               : idx === 2
+               ? 'bg-amber-700 text-white'
+               : 'bg-zinc-200 text-zinc-700'
                           }`}
                         >
                           {idx + 1}

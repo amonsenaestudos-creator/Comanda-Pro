@@ -400,25 +400,22 @@ export function App() {
 
   return (
     <div
-      className={`min-h-screen flex flex-col antialiased selection:bg-orange-500 selection:text-white cp-theme ${
-        aparencia.tema === 'escuro' ? 'cp-dark' : ''
-      } ${
-        aparencia.escalaFonte === 'grande'
-          ? 'cp-fs-grande'
-          : aparencia.escalaFonte === 'extra'
-          ? 'cp-fs-extra'
-          : ''
-      } ${aparencia.densidade === 'compacta' ? 'cp-compacta' : ''}`}
+   className={`min-h-screen flex flex-col antialiased selection:bg-orange-500 selection:text-white cp-theme ${
+    aparencia.tema === 'escuro' ? 'cp-dark' : ''
+   } ${
+    aparencia.escalaFonte === 'grande'
+     ? 'cp-fs-grande'
+     : aparencia.escalaFonte === 'extra'
+     ? 'cp-fs-extra'
+     : ''
+   } ${aparencia.densidade === 'compacta' ? 'cp-compacta' : ''}`}
     >
       {/* Top Header Bar */}
       <Header
         config={config}
         tables={tables}
-        onNavigateTab={(tabId) => setActiveTab(tabId)}
-        activeTab={activeTab}
         licenseExpiresAt={accessLicense.license.expiresAt}
         licenseOffline={accessLicense.offline}
-        demoMode={accessLicense.demoMode}
       />
 
       {/* Main Body: Left Sidebar + Tab Workspace */}
@@ -432,7 +429,6 @@ export function App() {
           occupiedTablesCount={occupiedTablesCount}
           kitchenPendingCount={kitchenPendingCount}
           hiddenTabs={hiddenTabs}
-          modoCaixa={aparencia.modoCaixa}
           onShowAllTabs={() =>
             handleUpdateAppearance({ abasOcultas: [], modoCaixa: false })
           }

@@ -49,9 +49,9 @@ export function Segmented<T extends string>({
               onClick={() => onSelect(opt.value)}
               aria-pressed={isActive}
               className={`flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg border text-xs font-bold transition ${
-                isActive
-                  ? 'bg-orange-600 border-orange-600 text-white shadow-sm'
-                  : 'bg-white border-zinc-300 text-zinc-600 hover:bg-zinc-100'
+        isActive
+         ? 'bg-orange-600 border-orange-600 text-white '
+         : 'bg-white border-zinc-300 text-zinc-600 hover:bg-zinc-100'
               }`}
             >
               {Icon && <Icon className="w-3.5 h-3.5" />}

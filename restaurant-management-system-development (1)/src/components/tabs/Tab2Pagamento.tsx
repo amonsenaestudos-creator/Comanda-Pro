@@ -14,6 +14,17 @@ import {
   Smartphone,
   Copy,
   Check,
+  Banknote,
+  Wallet,
+  Barcode,
+  Ticket,
+  RefreshCw,
+  PenLine,
+  Bitcoin,
+  Heart,
+  Bike,
+  Utensils,
+  Briefcase,
 } from 'lucide-react';
 import {
   AppConfig,
@@ -116,20 +127,20 @@ export const Tab2Pagamento: React.FC<Tab2PagamentoProps> = ({
   const trocoCalculado =
     cashGivenNum > cashPaid ? Number((cashGivenNum - cashPaid).toFixed(2)) : 0;
 
-  const paymentMethods: { method: PaymentMethod; icon: string; color: string }[] = [
-    { method: 'PIX', icon: '⚡', color: 'border-teal-500 bg-teal-50 text-teal-800' },
-    { method: 'Dinheiro', icon: '💵', color: 'border-emerald-500 bg-emerald-50 text-emerald-800' },
-    { method: 'Cartão Débito', icon: '💳', color: 'border-sky-500 bg-sky-50 text-sky-800' },
-    { method: 'Cartão Crédito', icon: '💳', color: 'border-indigo-500 bg-indigo-50 text-indigo-800' },
-    { method: 'Boleto', icon: '📄', color: 'border-zinc-400 bg-zinc-50 text-zinc-800' },
-    { method: 'Vale', icon: '🎟️', color: 'border-amber-500 bg-amber-50 text-amber-800' },
-    { method: 'Troca', icon: '🔄', color: 'border-purple-500 bg-purple-50 text-purple-800' },
-    { method: 'Cheque', icon: '✍️', color: 'border-gray-500 bg-gray-50 text-gray-800' },
-    { method: 'Cripto', icon: '₿', color: 'border-orange-500 bg-orange-50 text-orange-800' },
-    { method: 'Doação', icon: '❤️', color: 'border-rose-500 bg-rose-50 text-rose-800' },
-    { method: 'iFood', icon: '🛵', color: 'border-red-500 bg-red-50 text-red-800' },
-    { method: 'UberEats', icon: '🍔', color: 'border-green-600 bg-green-50 text-green-800' },
-    { method: 'Outros', icon: '💼', color: 'border-zinc-400 bg-zinc-50 text-zinc-800' },
+  const paymentMethods: { method: PaymentMethod; Icon: React.ElementType }[] = [
+    { method: 'PIX', Icon: QrCode },
+    { method: 'Dinheiro', Icon: Banknote },
+    { method: 'Cartão Débito', Icon: CreditCard },
+    { method: 'Cartão Crédito', Icon: Wallet },
+    { method: 'Boleto', Icon: Barcode },
+    { method: 'Vale', Icon: Ticket },
+    { method: 'Troca', Icon: RefreshCw },
+    { method: 'Cheque', Icon: PenLine },
+    { method: 'Cripto', Icon: Bitcoin },
+    { method: 'Doação', Icon: Heart },
+    { method: 'iFood', Icon: Bike },
+    { method: 'UberEats', Icon: Utensils },
+    { method: 'Outros', Icon: Briefcase },
   ];
 
   const handleAddSplit = () => {
@@ -221,18 +232,18 @@ export const Tab2Pagamento: React.FC<Tab2PagamentoProps> = ({
   // If no active order
   if (!currentOrder || currentOrder.itens.length === 0) {
     return (
-      <div className="bg-white rounded-xl shadow-xs border border-zinc-200 p-8 text-center max-w-lg mx-auto my-8">
+      <div className="cp-card p-8 text-center max-w-lg mx-auto my-8">
         <Receipt className="w-16 h-16 text-zinc-300 mx-auto mb-4" />
         <h3 className="text-lg font-bold text-zinc-800 mb-2">
           Nenhuma Venda Selecionada para Pagamento
         </h3>
         <p className="text-xs text-zinc-500 mb-6">
-          Vá para a Frente de Caixa (Aba 1) ou Gestão de Mesas (Aba 8), selecione a mesa ou adicione itens e clique no botão verde <strong>"Pagar"</strong>.
+          Abra a Frente de Caixa (ou o mapa de Mesas), lance os itens e toque em <strong>Pagar</strong>.
         </p>
         <div className="flex justify-center gap-3">
           <button
             onClick={() => onNavigateTab(1)}
-            className="px-4 py-2 text-xs font-bold rounded-lg bg-orange-600 hover:bg-orange-700 text-white flex items-center gap-1.5 shadow-xs"
+            className="px-4 py-2 text-xs font-bold rounded-lg bg-orange-600 hover:bg-orange-700 text-white flex items-center gap-1.5"
           >
             <ArrowLeft className="w-4 h-4" />
             Ir para Frente de Caixa
@@ -251,15 +262,15 @@ export const Tab2Pagamento: React.FC<Tab2PagamentoProps> = ({
   return (
     <div className="space-y-4">
       {/* Top Banner Navigation & Order Context */}
-      <div className="bg-white rounded-xl shadow-xs border border-zinc-200 p-4 flex flex-wrap items-center justify-between gap-3">
+      <div className="cp-card p-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center space-x-3">
           {/* Botão Volta PDV (Azul) */}
           <button
             onClick={() => onNavigateTab(1)}
-            className="px-3 py-2 text-xs font-bold rounded-lg bg-sky-600 hover:bg-sky-700 text-white flex items-center gap-1.5 shadow-xs transition"
+            className="px-3 py-2 text-xs font-bold rounded-lg bg-sky-600 hover:bg-sky-700 text-white flex items-center gap-1.5 transition"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span>Voltar PDV (Aba 1)</span>
+            <span>Voltar para o caixa</span>
           </button>
 
           <div>
@@ -300,7 +311,7 @@ export const Tab2Pagamento: React.FC<Tab2PagamentoProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         {/* Left Column: Totals, Discounts, Service Fee (Col 5) */}
         <div className="lg:col-span-5 space-y-4">
-          <div className="bg-white rounded-xl shadow-xs border border-zinc-200 p-4">
+          <div className="cp-card p-4">
             <h3 className="font-bold text-sm text-zinc-900 pb-2 border-b border-zinc-200 mb-3 flex items-center justify-between">
               <span>Discriminação de Valores</span>
               <span className="text-xs font-mono text-zinc-500">
@@ -387,9 +398,7 @@ export const Tab2Pagamento: React.FC<Tab2PagamentoProps> = ({
                         type="button"
                         onClick={() => setDiscountPercent(pct)}
                         className={`px-2 py-0.5 rounded text-[10px] font-bold border transition ${
-                          discountPercent === pct
-                            ? 'bg-rose-600 text-white border-rose-600'
-                            : 'bg-white text-zinc-700 border-zinc-300 hover:bg-zinc-100'
+                          discountPercent === pct ? 'bg-rose-600 text-white border-rose-600' : 'bg-white text-zinc-700 border-zinc-300 hover:bg-zinc-100'
                         }`}
                       >
                         {pct}%
@@ -424,9 +433,7 @@ export const Tab2Pagamento: React.FC<Tab2PagamentoProps> = ({
 
                 <div
                   className={`rounded-lg p-2 text-center border ${
-                    remaining > 0
-                      ? 'bg-rose-50 border-rose-200'
-                      : 'bg-zinc-100 border-zinc-200'
+                    remaining > 0 ? 'bg-rose-50 border-rose-200' : 'bg-zinc-100 border-zinc-200'
                   }`}
                 >
                   <div
@@ -437,9 +444,7 @@ export const Tab2Pagamento: React.FC<Tab2PagamentoProps> = ({
                     Falta a Pagar
                   </div>
                   <div
-                    className={`text-sm font-bold font-mono ${
-                      remaining > 0 ? 'text-rose-700 animate-pulse' : 'text-zinc-500'
-                    }`}
+                    className={`text-sm font-bold font-mono ${ remaining > 0 ? 'text-rose-700' : 'text-zinc-500' }`}
                   >
                     {formatCurrency(remaining)}
                   </div>
@@ -449,7 +454,7 @@ export const Tab2Pagamento: React.FC<Tab2PagamentoProps> = ({
           </div>
 
           {/* Optional customer document on receipt */}
-          <div className="bg-white rounded-xl shadow-xs border border-zinc-200 p-4">
+          <div className="cp-card p-4">
             <h4 className="text-xs font-bold text-zinc-800 mb-2">
               Identificação do Cliente no Cupom (Opcional)
             </h4>
@@ -474,45 +479,48 @@ export const Tab2Pagamento: React.FC<Tab2PagamentoProps> = ({
 
         {/* Right Column: Payment Methods, Mixed Splits, Cash Troco, Conclude (Col 7) */}
         <div className="lg:col-span-7 space-y-4">
-          <div className="bg-white rounded-xl shadow-xs border border-zinc-200 p-4">
+          <div className="cp-card p-4">
             <div className="flex items-center justify-between pb-3 border-b border-zinc-200 mb-3">
-              <h3 className="font-bold text-sm text-zinc-900">
-                Selecione Meio de Pagamento (Aceita Pagamento Misto)
+              <h3 className="font-bold text-sm cp-text flex items-baseline gap-2">
+                <span>Meio de pagamento</span>
+                <span className="cp-small cp-faint font-medium">pode ser dividido</span>
               </h3>
               {/* Botão Amarelo: Exibir QR-Code PIX */}
               <button
                 type="button"
                 onClick={() => setIsPixModalOpen(true)}
-                className="px-3 py-1.5 text-xs font-bold rounded-lg bg-amber-400 hover:bg-amber-500 text-zinc-950 flex items-center gap-1.5 shadow-xs transition"
+                className="px-3 py-1.5 text-xs font-bold rounded-lg bg-teal-600 hover:bg-teal-700 text-white flex items-center gap-1.5 transition"
               >
                 <QrCode className="w-3.5 h-3.5" />
-                <span>Exibir QR-Code PIX</span>
+                <span>QR-Code PIX</span>
               </button>
             </div>
 
-            {/* Payment Method Badges Grid */}
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 mb-4">
-              {paymentMethods.map((m) => (
-                <button
-                  key={m.method}
-                  type="button"
-                  onClick={() => setSelectedMethod(m.method)}
-                  className={`p-2 rounded-lg border text-center transition flex flex-col items-center justify-center gap-1 ${
-                    selectedMethod === m.method
-                      ? 'border-orange-500 bg-orange-50/80 ring-2 ring-orange-500/30'
-                      : 'border-zinc-200 hover:border-zinc-300 bg-white hover:bg-zinc-50'
-                  }`}
-                >
-                  <span className="text-base">{m.icon}</span>
-                  <span className="text-[11px] font-semibold text-zinc-800 leading-tight">
-                    {m.method}
-                  </span>
-                </button>
-              ))}
+            {/* Meios de pagamento */}
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-1.5 mb-4">
+              {paymentMethods.map(({ method, Icon }) => {
+                const isSelected = selectedMethod === method;
+                return (
+                  <button
+                    key={method}
+                    type="button"
+                    onClick={() => setSelectedMethod(method)}
+                    aria-pressed={isSelected}
+                    className={`px-2 py-2 rounded-lg border text-center flex items-center justify-center gap-1.5 transition-colors ${
+                      isSelected ? 'bg-orange-600 border-orange-600 text-white' : 'bg-white border-zinc-200 text-zinc-600 hover:bg-zinc-50'
+                    }`}
+                  >
+                    <Icon className="w-4 h-4 shrink-0" />
+                    <span className="text-[11px] font-semibold leading-tight truncate">
+                      {method}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
 
             {/* Split Input Box */}
-            <div className="bg-zinc-50 p-3 rounded-lg border border-zinc-200 flex flex-wrap items-center gap-2 mb-4">
+            <div className="cp-inset p-3 rounded-lg flex flex-wrap items-center gap-2 mb-4">
               <div className="flex-1 min-w-[140px]">
                 <label className="text-[10px] font-bold text-zinc-500 uppercase block mb-1">
                   Método Selecionado
@@ -541,7 +549,7 @@ export const Tab2Pagamento: React.FC<Tab2PagamentoProps> = ({
                   type="button"
                   onClick={handleAddSplit}
                   disabled={remaining <= 0 && splits.length > 0}
-                  className="px-4 py-2 text-xs font-bold rounded-lg bg-orange-600 hover:bg-orange-700 text-white flex items-center gap-1 shadow-xs disabled:opacity-50"
+                  className="px-4 py-2 text-xs font-bold rounded-lg bg-orange-600 hover:bg-orange-700 text-white flex items-center gap-1 disabled:opacity-50"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   <span>Adicionar Parcela</span>
@@ -551,15 +559,15 @@ export const Tab2Pagamento: React.FC<Tab2PagamentoProps> = ({
 
             {/* If Dinheiro: Troco Calculator */}
             {selectedMethod === 'Dinheiro' && (
-              <div className="bg-emerald-50/70 border border-emerald-200 rounded-lg p-3 mb-4 space-y-2">
-                <div className="flex items-center gap-2 text-xs font-bold text-emerald-900">
+              <div className="cp-inset rounded-lg p-3 mb-4 space-y-2 border-emerald-200">
+                <div className="flex items-center gap-2 cp-item font-bold cp-text">
                   <Coins className="w-4 h-4 text-emerald-600" />
-                  <span>Cálculo de Troco em Dinheiro</span>
+                  <span>Troco em dinheiro</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="flex-1">
-                    <label className="text-[10px] text-emerald-800 font-semibold block mb-0.5">
-                      Valor Entregue pelo Cliente:
+                    <label className="cp-small cp-muted font-semibold block mb-0.5">
+                      Valor entregue pelo cliente
                     </label>
                     <input
                       type="number"
@@ -567,14 +575,14 @@ export const Tab2Pagamento: React.FC<Tab2PagamentoProps> = ({
                       placeholder="Ex: 50.00, 100.00"
                       value={cashGiven}
                       onChange={(e) => setCashGiven(e.target.value)}
-                      className="w-full px-3 py-1.5 text-xs font-bold font-mono bg-white border border-emerald-300 rounded-lg text-emerald-950"
+                      className="cp-input w-full px-3 py-1.5 text-xs font-bold font-mono"
                     />
                   </div>
                   <div className="w-36 text-right">
-                    <span className="text-[10px] text-emerald-800 font-semibold block mb-0.5">
-                      Troco a Devolver:
+                    <span className="cp-small cp-muted font-semibold block mb-0.5">
+                      Troco a devolver
                     </span>
-                    <span className="text-lg font-black font-mono text-emerald-700">
+                    <span className="cp-total text-emerald-600 font-black font-mono">
                       {formatCurrency(trocoCalculado)}
                     </span>
                   </div>
@@ -636,7 +644,7 @@ export const Tab2Pagamento: React.FC<Tab2PagamentoProps> = ({
               <button
                 type="button"
                 onClick={handleClearAll}
-                className="py-3 px-4 rounded-xl font-bold text-xs bg-rose-600 hover:bg-rose-700 text-white flex items-center justify-center gap-1.5 shadow-sm transition"
+                className="py-3 px-4 rounded-xl font-bold text-xs bg-rose-600 hover:bg-rose-700 text-white flex items-center justify-center gap-1.5 transition"
               >
                 <Trash2 className="w-4 h-4" />
                 <span>Limpar</span>
@@ -653,7 +661,7 @@ export const Tab2Pagamento: React.FC<Tab2PagamentoProps> = ({
                   }
                 }}
                 disabled={!lastFinishedSale}
-                className="py-3 px-4 rounded-xl font-bold text-xs bg-sky-600 hover:bg-sky-700 text-white disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 shadow-sm transition"
+                className="py-3 px-4 rounded-xl font-bold text-xs bg-sky-600 hover:bg-sky-700 text-white disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 transition"
               >
                 <Printer className="w-4 h-4" />
                 <span>Imprimir Cupom</span>
@@ -663,7 +671,7 @@ export const Tab2Pagamento: React.FC<Tab2PagamentoProps> = ({
               <button
                 type="button"
                 onClick={handleFinishSale}
-                className="col-span-2 sm:col-span-1 py-3 px-4 rounded-xl font-extrabold text-sm bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white flex items-center justify-center gap-2 shadow-md transition"
+                className="col-span-2 sm:col-span-1 py-3 px-4 rounded-xl font-extrabold text-sm bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white flex items-center justify-center gap-2 transition"
               >
                 <CheckCircle2 className="w-5 h-5" />
                 <span>Concluir Venda</span>
@@ -676,7 +684,7 @@ export const Tab2Pagamento: React.FC<Tab2PagamentoProps> = ({
       {/* PIX QR Code Modal */}
       {isPixModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center border border-zinc-200 animate-in zoom-in-95">
+          <div className="cp-card shadow-2xl max-w-sm w-full p-6 text-center">
             <div className="w-12 h-12 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center mx-auto mb-3">
               <Smartphone className="w-6 h-6" />
             </div>

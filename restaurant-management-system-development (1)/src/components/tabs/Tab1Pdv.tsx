@@ -390,7 +390,7 @@ export const Tab1Pdv: React.FC<Tab1PdvProps> = ({
             <button
               onClick={handlePay}
               disabled={currentItems.length === 0}
-              className="cp-btn bg-emerald-600 text-white shadow-lg shadow-emerald-900/20 min-w-[9.5rem]"
+              className="cp-btn bg-emerald-600 text-white min-w-[9.5rem]"
             >
               <DollarSign className="w-5 h-5" />
               <span>Pagar</span>
@@ -426,7 +426,7 @@ export const Tab1Pdv: React.FC<Tab1PdvProps> = ({
                   'shrink-0 w-9 rounded-lg border font-extrabold text-xs transition-all relative',
                   compact ? 'py-1' : 'py-1.5',
                   isActive
-                    ? 'bg-orange-600 border-orange-600 text-white shadow-md'
+                    ? 'bg-orange-600 border-orange-600 text-white'
                     : status === 'ocupada'
                     ? 'bg-rose-50 border-rose-200 text-rose-600 hover:bg-rose-100'
                     : status === 'conta'

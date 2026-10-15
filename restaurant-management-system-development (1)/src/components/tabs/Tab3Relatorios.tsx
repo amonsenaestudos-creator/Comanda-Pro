@@ -82,7 +82,7 @@ export const Tab3Relatorios: React.FC<Tab3RelatoriosProps> = ({
   return (
     <div className="space-y-4">
       {/* Top Banner and Quick Shortcuts */}
-      <div className="bg-white rounded-xl shadow-xs border border-zinc-200 p-4">
+      <div className="cp-card p-4">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div>
             <h2 className="text-base font-extrabold text-zinc-900 flex items-center gap-2">
@@ -99,7 +99,7 @@ export const Tab3Relatorios: React.FC<Tab3RelatoriosProps> = ({
             {/* Botão Azul: Imprimir Relatórios */}
             <button
               onClick={handlePrintReport}
-              className="px-3.5 py-2 text-xs font-bold rounded-lg bg-sky-600 hover:bg-sky-700 text-white flex items-center gap-1.5 shadow-xs transition"
+              className="px-3.5 py-2 text-xs font-bold rounded-lg bg-sky-600 hover:bg-sky-700 text-white flex items-center gap-1.5 transition"
             >
               <Printer className="w-4 h-4" />
               <span>Imprimir Relatório</span>
@@ -108,7 +108,7 @@ export const Tab3Relatorios: React.FC<Tab3RelatoriosProps> = ({
             {/* Botão Vermelho: Zerar Caixa / Novo Dia */}
             <button
               onClick={handleClearConfirm}
-              className="px-3.5 py-2 text-xs font-bold rounded-lg bg-rose-600 hover:bg-rose-700 text-white flex items-center gap-1.5 shadow-xs transition"
+              className="px-3.5 py-2 text-xs font-bold rounded-lg bg-rose-600 hover:bg-rose-700 text-white flex items-center gap-1.5 transition"
             >
               <AlertTriangle className="w-4 h-4" />
               <span>Zerar Caixa / Novo Dia</span>
@@ -151,7 +151,7 @@ export const Tab3Relatorios: React.FC<Tab3RelatoriosProps> = ({
 
       {/* KPI Cards: Total Vendas, Subtotal, Serviços, Descontos, Impostos a Pagar */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-        <div className="bg-white p-3.5 rounded-xl border border-zinc-200 shadow-2xs">
+        <div className="cp-card p-3.5">
           <div className="text-[11px] font-semibold text-zinc-500 uppercase">
             Vendas Concluídas
           </div>
@@ -161,7 +161,7 @@ export const Tab3Relatorios: React.FC<Tab3RelatoriosProps> = ({
           <div className="text-[10px] text-zinc-400 mt-0.5">Tickets emitidos</div>
         </div>
 
-        <div className="bg-white p-3.5 rounded-xl border border-zinc-200 shadow-2xs">
+        <div className="cp-card p-3.5">
           <div className="text-[11px] font-semibold text-zinc-500 uppercase">
             Subtotal Bruto
           </div>
@@ -171,7 +171,7 @@ export const Tab3Relatorios: React.FC<Tab3RelatoriosProps> = ({
           <div className="text-[10px] text-zinc-400 mt-0.5">Sem taxas e descontos</div>
         </div>
 
-        <div className="bg-white p-3.5 rounded-xl border border-zinc-200 shadow-2xs">
+        <div className="cp-card p-3.5">
           <div className="text-[11px] font-semibold text-emerald-600 uppercase">
             Taxa de Serviço
           </div>
@@ -181,7 +181,7 @@ export const Tab3Relatorios: React.FC<Tab3RelatoriosProps> = ({
           <div className="text-[10px] text-zinc-400 mt-0.5">Comissão dos garçons</div>
         </div>
 
-        <div className="bg-white p-3.5 rounded-xl border border-orange-200 bg-orange-50/30 shadow-2xs">
+        <div className="cp-card p-3.5 border-orange-200">
           <div className="text-[11px] font-bold text-orange-700 uppercase">
             Faturamento Líquido
           </div>
@@ -191,7 +191,7 @@ export const Tab3Relatorios: React.FC<Tab3RelatoriosProps> = ({
           <div className="text-[10px] text-zinc-500 mt-0.5">Total recebido em caixa</div>
         </div>
 
-        <div className="bg-white p-3.5 rounded-xl border border-zinc-200 shadow-2xs">
+        <div className="cp-card p-3.5">
           <div className="text-[11px] font-semibold text-rose-600 uppercase">
             Impostos a Pagar
           </div>
@@ -205,7 +205,7 @@ export const Tab3Relatorios: React.FC<Tab3RelatoriosProps> = ({
       </div>
 
       {/* Filter Toolbar */}
-      <div className="bg-white rounded-xl shadow-xs border border-zinc-200 p-4">
+      <div className="cp-card p-4">
         <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-4 gap-3 items-end">
           {/* Data */}
           <div>
@@ -283,7 +283,7 @@ export const Tab3Relatorios: React.FC<Tab3RelatoriosProps> = ({
       </div>
 
       {/* Sales Listing Table */}
-      <div className="bg-white rounded-xl shadow-xs border border-zinc-200 overflow-hidden">
+      <div className="cp-card overflow-hidden">
         <div className="px-4 py-3 bg-zinc-50 border-b border-zinc-200 flex justify-between items-center">
           <span className="font-bold text-xs text-zinc-700 uppercase tracking-wide">
             Listagem Detalhada de Vendas Realizadas
@@ -384,7 +384,7 @@ export const Tab3Relatorios: React.FC<Tab3RelatoriosProps> = ({
       {/* Sale Detail Modal */}
       {selectedSaleDetail && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full p-5 border border-zinc-200">
+          <div className="cp-card shadow-2xl max-w-lg w-full p-5">
             <div className="flex justify-between items-center pb-3 border-b border-zinc-200">
               <div className="flex items-center gap-2">
                 <Receipt className="w-5 h-5 text-orange-600" />

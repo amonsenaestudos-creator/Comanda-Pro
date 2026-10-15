@@ -139,7 +139,7 @@ export const Tab9CozinhaDelivery: React.FC<Tab9CozinhaDeliveryProps> = ({
   return (
     <div className="space-y-4">
       {/* Top Banner */}
-      <div className="bg-white rounded-xl shadow-xs border border-zinc-200 p-4">
+      <div className="cp-card p-4">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div>
             <h2 className="text-base font-extrabold text-zinc-900 flex items-center gap-2">
@@ -155,7 +155,7 @@ export const Tab9CozinhaDelivery: React.FC<Tab9CozinhaDeliveryProps> = ({
             {/* Botão Verde: Novo Pedido Delivery */}
             <button
               onClick={() => setIsNewOrderModalOpen(true)}
-              className="px-4 py-2 text-xs font-bold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 shadow-xs transition"
+              className="px-4 py-2 text-xs font-bold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 transition"
             >
               <Plus className="w-4 h-4" />
               <span>Novo Pedido Delivery / App</span>
@@ -202,7 +202,7 @@ export const Tab9CozinhaDelivery: React.FC<Tab9CozinhaDeliveryProps> = ({
             >
               {/* Column Header */}
               <div
-                className={`p-2.5 rounded-lg border ${col.border} ${col.color} flex items-center justify-between mb-3 shadow-2xs`}
+                className={`p-2.5 rounded-lg border ${col.border} ${col.color} flex items-center justify-between mb-3`}
               >
                 <div className="flex items-center gap-2">
                   <ColIcon className="w-4 h-4" />
@@ -210,7 +210,7 @@ export const Tab9CozinhaDelivery: React.FC<Tab9CozinhaDeliveryProps> = ({
                     {col.label}
                   </span>
                 </div>
-                <span className="font-mono font-bold text-xs bg-white/80 px-2 py-0.5 rounded shadow-2xs">
+                <span className="font-mono font-bold text-xs bg-white/80 px-2 py-0.5 rounded">
                   {colOrders.length}
                 </span>
               </div>
@@ -225,20 +225,20 @@ export const Tab9CozinhaDelivery: React.FC<Tab9CozinhaDeliveryProps> = ({
                   colOrders.map((order) => (
                     <div
                       key={order.id}
-                      className="bg-white rounded-xl border border-zinc-200 p-3.5 shadow-2xs hover:shadow-xs transition flex flex-col justify-between"
+                      className="cp-card p-3.5 transition flex flex-col justify-between"
                     >
                       {/* Top badge */}
                       <div className="flex items-center justify-between pb-2 border-b border-zinc-100 mb-2">
                         <div className="flex items-center gap-1.5">
                           <span
                             className={`px-2 py-0.5 rounded font-extrabold text-[10px] uppercase ${
-                              order.origem === 'iFood'
-                                ? 'bg-red-100 text-red-800'
-                                : order.origem === 'WhatsApp'
-                                ? 'bg-emerald-100 text-emerald-800'
-                                : order.origem === 'UberEats'
-                                ? 'bg-green-100 text-green-900'
-                                : 'bg-orange-100 text-orange-800'
+               order.origem === 'iFood'
+                ? 'bg-red-100 text-red-800'
+                : order.origem === 'WhatsApp'
+                ? 'bg-emerald-100 text-emerald-800'
+                : order.origem === 'UberEats'
+                ? 'bg-green-100 text-green-900'
+                : 'bg-orange-100 text-orange-800'
                             }`}
                           >
                             {order.origemIdentificador || order.origem}
@@ -315,7 +315,7 @@ export const Tab9CozinhaDelivery: React.FC<Tab9CozinhaDeliveryProps> = ({
                           <button
                             onClick={() => onPrintKitchenOrder(order)}
                             title="Imprimir Comanda de Cozinha"
-                            className="p-1.5 rounded-lg bg-sky-600 hover:bg-sky-700 text-white transition shadow-2xs"
+                            className="p-1.5 rounded-lg bg-sky-600 hover:bg-sky-700 text-white transition"
                           >
                             <Printer className="w-3.5 h-3.5" />
                           </button>
@@ -362,7 +362,7 @@ export const Tab9CozinhaDelivery: React.FC<Tab9CozinhaDeliveryProps> = ({
       {/* Modal: New Delivery / App Order */}
       {isNewOrderModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-xl w-full p-5 border border-zinc-200 animate-in zoom-in-95">
+          <div className="cp-card shadow-2xl max-w-xl w-full p-5">
             <div className="flex justify-between items-center pb-3 border-b border-zinc-200">
               <div className="flex items-center gap-2">
                 <ChefHat className="w-5 h-5 text-orange-600" />
@@ -543,7 +543,7 @@ export const Tab9CozinhaDelivery: React.FC<Tab9CozinhaDeliveryProps> = ({
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-1.5 text-xs font-bold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 shadow-xs"
+                    className="px-4 py-1.5 text-xs font-bold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5"
                   >
                     <ShoppingBag className="w-4 h-4" />
                     <span>Criar Pedido</span>

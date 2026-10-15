@@ -139,7 +139,7 @@ export const Tab4Configuracao: React.FC<Tab4ConfiguracaoProps> = ({
   return (
     <div className="space-y-4">
       {/* Top Banner */}
-      <div className="bg-white rounded-xl shadow-xs border border-zinc-200 p-4">
+      <div className="cp-card p-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <h2 className="text-base font-extrabold text-zinc-900 flex items-center gap-2">
@@ -155,7 +155,7 @@ export const Tab4Configuracao: React.FC<Tab4ConfiguracaoProps> = ({
           <div className="flex items-center gap-2">
             <button
               onClick={handleSubmit}
-              className="px-4 py-2 text-xs font-bold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 shadow-xs transition"
+              className="px-4 py-2 text-xs font-bold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 transition"
             >
               <Save className="w-4 h-4" />
               <span>Salvar Alterações</span>
@@ -197,7 +197,7 @@ export const Tab4Configuracao: React.FC<Tab4ConfiguracaoProps> = ({
       </div>
 
       {saveSuccess && (
-        <div className="bg-emerald-50 border border-emerald-300 text-emerald-800 px-4 py-3 rounded-xl flex items-center gap-2 text-xs font-bold animate-in fade-in">
+        <div className="bg-emerald-50 border border-emerald-300 text-emerald-800 px-4 py-3 rounded-xl flex items-center gap-2 text-xs font-bold">
           <CheckCircle className="w-4 h-4 text-emerald-600" />
           <span>Configurações e alíquotas salvas com sucesso no banco de dados local!</span>
         </div>
@@ -294,9 +294,9 @@ export const Tab4Configuracao: React.FC<Tab4ConfiguracaoProps> = ({
                           type="button"
                           onClick={() => toggleAbaOculta(tabId)}
                           className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg border text-left transition ${
-                            escondida
-                              ? 'cp-soft cp-faint border-transparent'
-                              : 'cp-card cp-text hover:border-orange-300'
+              escondida
+               ? 'cp-soft cp-faint border-transparent'
+               : 'cp-card cp-text hover:border-orange-300'
                           }`}
                         >
                           {escondida ? (
@@ -324,7 +324,7 @@ export const Tab4Configuracao: React.FC<Tab4ConfiguracaoProps> = ({
         </div>
 
         {/* Section 1: Dados da Empresa & Consulta BrasilAPI */}
-        <div className="bg-white rounded-xl shadow-xs border border-zinc-200 p-5">
+        <div className="cp-card p-5">
           <div className="flex items-center justify-between pb-3 border-b border-zinc-200 mb-4">
             <div className="flex items-center space-x-2">
               <Building2 className="w-5 h-5 text-orange-600" />
@@ -366,7 +366,7 @@ export const Tab4Configuracao: React.FC<Tab4ConfiguracaoProps> = ({
                 type="button"
                 onClick={handleConsultarBrasilApi}
                 disabled={isSearchingCnpj}
-                className="w-full sm:w-auto px-4 py-2 text-xs font-bold rounded-lg bg-sky-600 hover:bg-sky-700 text-white flex items-center justify-center gap-1.5 shadow-xs transition disabled:opacity-50"
+                className="w-full sm:w-auto px-4 py-2 text-xs font-bold rounded-lg bg-sky-600 hover:bg-sky-700 text-white flex items-center justify-center gap-1.5 transition disabled:opacity-50"
               >
                 {isSearchingCnpj ? (
                   <>
@@ -404,9 +404,9 @@ export const Tab4Configuracao: React.FC<Tab4ConfiguracaoProps> = ({
             {cnpjFeedback && (
               <div
                 className={`mt-2 p-2.5 rounded-lg text-xs font-semibold flex items-center gap-2 ${
-                  cnpjFeedback.type === 'success'
-                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                    : 'bg-rose-100 text-rose-800 border border-rose-300'
+         cnpjFeedback.type === 'success'
+          ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+          : 'bg-rose-100 text-rose-800 border border-rose-300'
                 }`}
               >
                 {cnpjFeedback.type === 'success' ? (
@@ -638,7 +638,7 @@ export const Tab4Configuracao: React.FC<Tab4ConfiguracaoProps> = ({
         {/* Section 2: Taxas de Comissão de Cartão & Aplicativos + Desconto Máximo + Impostos */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Card & App Commissions */}
-          <div className="bg-white rounded-xl shadow-xs border border-zinc-200 p-5">
+          <div className="cp-card p-5">
             <div className="flex items-center space-x-2 pb-3 border-b border-zinc-200 mb-4">
               <Percent className="w-5 h-5 text-orange-600" />
               <h3 className="font-bold text-sm text-zinc-900">
@@ -742,7 +742,7 @@ export const Tab4Configuracao: React.FC<Tab4ConfiguracaoProps> = ({
           </div>
 
           {/* Regras de Desconto & Tributos */}
-          <div className="bg-white rounded-xl shadow-xs border border-zinc-200 p-5">
+          <div className="cp-card p-5">
             <div className="flex items-center space-x-2 pb-3 border-b border-zinc-200 mb-4">
               <Shield className="w-5 h-5 text-orange-600" />
               <h3 className="font-bold text-sm text-zinc-900">
@@ -847,7 +847,7 @@ export const Tab4Configuracao: React.FC<Tab4ConfiguracaoProps> = ({
         </div>
 
         {/* Section 3: Mensagem Rodapé do Comprovante de Pagamentos */}
-        <div className="bg-white rounded-xl shadow-xs border border-zinc-200 p-5">
+        <div className="cp-card p-5">
           <div className="flex items-center space-x-2 pb-3 border-b border-zinc-200 mb-3">
             <MessageSquare className="w-5 h-5 text-orange-600" />
             <h3 className="font-bold text-sm text-zinc-900">
@@ -871,7 +871,7 @@ export const Tab4Configuracao: React.FC<Tab4ConfiguracaoProps> = ({
         <div className="flex justify-end gap-3 pt-2">
           <button
             type="submit"
-            className="px-6 py-2.5 text-xs font-extrabold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-2 shadow-md transition"
+            className="px-6 py-2.5 text-xs font-extrabold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-2 transition"
           >
             <Save className="w-4 h-4" />
             <span>Salvar Todas as Configurações</span>
