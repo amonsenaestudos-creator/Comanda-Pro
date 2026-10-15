@@ -10,6 +10,8 @@ import {
   LayoutGrid,
   ChefHat,
   Users,
+  Sparkles,
+  Monitor,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
@@ -105,6 +107,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
       label: 'Cadastros',
       sublabel: 'Clientes & Equipe',
       icon: Users,
+    },
+    {
+      id: 12,
+      label: 'Tela Cliente',
+      sublabel: 'Comanda visual',
+      icon: Monitor,
+      color: 'text-amber-300',
+    },
+    {
+      id: 11,
+      label: 'Resumo Rápido',
+      sublabel: 'Caixa & Status',
+      icon: Sparkles,
+      color: 'text-amber-300',
     },
   ];
 

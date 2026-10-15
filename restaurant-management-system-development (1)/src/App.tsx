@@ -46,6 +46,8 @@ import { Tab7Graficos } from './components/tabs/Tab7Graficos';
 import { Tab8Mesas } from './components/tabs/Tab8Mesas';
 import { Tab9CozinhaDelivery } from './components/tabs/Tab9CozinhaDelivery';
 import { Tab10Cadastros } from './components/tabs/Tab10Cadastros';
+import { Tab11ResumoRapido } from './components/tabs/Tab11ResumoRapido';
+import { Tab12Cliente } from './components/tabs/Tab12Cliente';
 
 export function App() {
   const accessLicense = useAccessLicense();
@@ -156,6 +158,12 @@ export function App() {
       } else if (e.key === 'F2') {
         e.preventDefault();
         setActiveTab(2);
+      } else if (e.key === 'F11') {
+        e.preventDefault();
+        setActiveTab(11);
+      } else if (e.key === 'F12') {
+        e.preventDefault();
+        setActiveTab(12);
       } else if (e.key === 'Escape') {
         if (printModalState.isOpen) {
           setPrintModalState((prev) => ({ ...prev, isOpen: false }));
@@ -210,6 +218,13 @@ export function App() {
             }
           : t
       )
+    );
+  };
+
+  // Save table observation (quick note)
+  const handleSaveTableObservation = (tableNum: number, note: string) => {
+    setTables((prev) =>
+      prev.map((t) => (t.numero === tableNum ? { ...t, observacaoMesa: note } : t))
     );
   };
 
@@ -380,6 +395,7 @@ export function App() {
                 config={config}
                 selectedTableNumber={selectedTableNumber}
                 setSelectedTableNumber={setSelectedTableNumber}
+                onSaveTableObservation={handleSaveTableObservation}
               />
             )}
 
@@ -462,6 +478,24 @@ export function App() {
                 deliverers={deliverers}
                 onSaveOrders={(orders) => setKitchenOrders(orders)}
                 onPrintKitchenOrder={handlePrintKitchenOrder}
+                onNavigateTab={(tabId) => setActiveTab(tabId)}
+              />
+            )}
+
+            {activeTab === 12 && (
+              <Tab12Cliente
+                tables={tables}
+                selectedTableNumber={selectedTableNumber}
+                config={config}
+              />
+            )}
+
+            {activeTab === 11 && (
+              <Tab11ResumoRapido
+                sales={sales}
+                tables={tables}
+                kitchenOrders={kitchenOrders}
+                config={config}
                 onNavigateTab={(tabId) => setActiveTab(tabId)}
               />
             )}
