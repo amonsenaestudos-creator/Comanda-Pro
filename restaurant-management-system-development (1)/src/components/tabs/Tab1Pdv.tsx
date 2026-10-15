@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import {
   Search,
   Plus,
@@ -6,17 +6,21 @@ import {
   Trash2,
   DollarSign,
   Printer,
-  HelpCircle,
-  LogOut,
-  Utensils,
   ChefHat,
-  Tag,
+  HelpCircle,
+  Utensils,
+  LayoutGrid,
   X,
-  Hash,
-  ShoppingBag,
+  Tag,
+  Settings2,
+  ChevronLeft,
+  ChevronRight,
+  Keyboard,
 } from 'lucide-react';
-import { AppConfig, OrderItem, Product, Table } from '../../types';
+import { AppConfig, OrderItem, Product, Table, CaixaAppearance } from '../../types';
 import { formatCurrency } from '../../utils/formatters';
+import { AppearanceControls } from '../AppearanceControls';
+import { cn } from '../../utils/cn';
 
 interface Tab1PdvProps {
   products: Product[];
@@ -39,7 +43,31 @@ interface Tab1PdvProps {
   config: AppConfig;
   selectedTableNumber?: number;
   setSelectedTableNumber?: (tableNum: number) => void;
+  /** Ajustes rápidos de tema/letra/densidade, feitos direto no caixa. */
+  onUpdateAppearance?: (patch: Partial<CaixaAppearance>) => void;
 }
+
+const APARENCIA_PADRAO: CaixaAppearance = {
+  tema: 'claro',
+  escalaFonte: 'padrao',
+  densidade: 'confortavel',
+  tamanhoItemCardapio: 'medio',
+  modoCaixa: false,
+  abasOcultas: [],
+  mostrarEstoque: true,
+  mostrarEan: false,
+  mostrarSetor: true,
+  mostrarUnitarioNoItem: true,
+  mostrarObsItem: true,
+  mostrarObsMesa: true,
+  mostrarBotaoCozinha: true,
+  mostrarBotaoImprimir: true,
+  mostrarConsultaPreco: false,
+  quantidadesRapidas: [1, 2, 3, 5],
+  focoBuscaAoAbrir: true,
+  enterAdicionaPrimeiro: true,
+  confirmarLimpar: true,
+};
 
 export const Tab1Pdv: React.FC<Tab1PdvProps> = ({
   products,
@@ -53,8 +81,11 @@ export const Tab1Pdv: React.FC<Tab1PdvProps> = ({
   config,
   selectedTableNumber: propTableNum,
   setSelectedTableNumber: setPropTableNum,
+  onUpdateAppearance,
 }) => {
-  // Table selection: 1 to 50 or 0 for 'Balcão / Avulso'
+  const a = config.aparencia || APARENCIA_PADRAO;
+  const compact = a.densidade === 'compacta';
+
   const [currentTableNum, setCurrentTableNum] = useState<number>(propTableNum || 1);
   const [searchTerm, setSearchTerm] = useState('');
   const [quantity, setQuantity] = useState<number>(1);
@@ -64,45 +95,60 @@ export const Tab1Pdv: React.FC<Tab1PdvProps> = ({
   const [priceLookupSearch, setPriceLookupSearch] = useState('');
   const [kitchenAlert, setKitchenAlert] = useState<string | null>(null);
   const [mesaObservacaoInput, setMesaObservacaoInput] = useState('');
+  const [showAjustes, setShowAjustes] = useState(false);
 
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const stripRef = useRef<HTMLDivElement>(null);
 
-  // Sync prop changes if selected from Mesa tab
   useEffect(() => {
     if (propTableNum) {
       setCurrentTableNum(propTableNum);
     }
   }, [propTableNum]);
 
-  // Find active table data
   const currentTable = tables.find((t) => t.numero === currentTableNum);
   const currentItems = currentTable ? currentTable.itens : [];
 
-  // Calculate totals
   const totalItemsCount = currentItems.reduce((acc, it) => acc + it.quantidade, 0);
   const totalValue = currentItems.reduce((acc, it) => acc + it.valorTotal, 0);
 
-  // Filter products for search
-  const filteredProducts = products.filter((p) => {
-    const matchesSearch =
-      searchTerm.trim() === '' ||
-      p.descricao.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.ean.includes(searchTerm);
-    const matchesCat = activeCategory === 'TODOS' || p.setor === activeCategory;
-    return matchesSearch && matchesCat;
-  });
+  const filteredProducts = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
+    return products.filter((p) => {
+      const matchesSearch =
+        term === '' || p.descricao.toLowerCase().includes(term) || p.ean.includes(term);
+      const matchesCat = activeCategory === 'TODOS' || p.setor === activeCategory;
+      return matchesSearch && matchesCat;
+    });
+  }, [products, searchTerm, activeCategory]);
 
-  // Unique categories
-  const categories = ['TODOS', ...Array.from(new Set(products.map((p) => p.setor)))];
-
-  // Price lookup modal items
-  const lookupProducts = products.filter(
-    (p) =>
-      p.descricao.toLowerCase().includes(priceLookupSearch.toLowerCase()) ||
-      p.ean.includes(priceLookupSearch)
+  const categories = useMemo(
+    () => ['TODOS', ...Array.from(new Set(products.map((p) => p.setor)))],
+    [products]
   );
 
-  // Sync mesa observation when table changes
+  const lookupProducts = useMemo(() => {
+    const term = priceLookupSearch.trim().toLowerCase();
+    return products.filter(
+      (p) => p.descricao.toLowerCase().includes(term) || p.ean.includes(term)
+    );
+  }, [products, priceLookupSearch]);
+
+  // Cursor já no campo de busca: dá para bipar o código sem clicar em nada.
+  useEffect(() => {
+    if (a.focoBuscaAoAbrir) {
+      searchInputRef.current?.focus();
+    }
+  }, [currentTableNum, a.focoBuscaAoAbrir]);
+
+  // Mantém a mesa ativa dentro da régua de mesas.
+  useEffect(() => {
+    const activeChip = stripRef.current?.querySelector<HTMLElement>(
+      `[data-mesa="${currentTableNum}"]`
+    );
+    activeChip?.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
+  }, [currentTableNum]);
+
   useEffect(() => {
     const tableObj = tables.find((t) => t.numero === currentTableNum);
     setMesaObservacaoInput(tableObj?.observacaoMesa || '');
@@ -113,6 +159,11 @@ export const Tab1Pdv: React.FC<Tab1PdvProps> = ({
     if (setPropTableNum) {
       setPropTableNum(num);
     }
+  };
+
+  const handleStepTable = (delta: number) => {
+    const next = Math.min(50, Math.max(1, currentTableNum + delta));
+    if (next !== currentTableNum) handleSelectTable(next);
   };
 
   const handleAddItem = (prod: Product, customQty?: number) => {
@@ -152,13 +203,15 @@ export const Tab1Pdv: React.FC<Tab1PdvProps> = ({
 
     onSaveTableItems(currentTableNum, updatedItems);
 
-    // Reset input fields
     setQuantity(1);
     setItemObservation('');
     setSearchTerm('');
-    if (searchInputRef.current) {
-      searchInputRef.current.focus();
-    }
+    searchInputRef.current?.focus();
+  };
+
+  const handleRemoveItem = (index: number) => {
+    const updated = currentItems.filter((_, i) => i !== index);
+    onSaveTableItems(currentTableNum, updated);
   };
 
   const handleUpdateItemQuantity = (index: number, delta: number) => {
@@ -179,14 +232,12 @@ export const Tab1Pdv: React.FC<Tab1PdvProps> = ({
     onSaveTableItems(currentTableNum, updated);
   };
 
-  const handleRemoveItem = (index: number) => {
-    const updated = currentItems.filter((_, i) => i !== index);
-    onSaveTableItems(currentTableNum, updated);
-  };
-
   const handleClearTable = () => {
     if (currentItems.length === 0) return;
-    if (window.confirm(`Deseja realmente LIMPAR todos os itens da Mesa #${currentTableNum}?`)) {
+    if (
+      !a.confirmarLimpar ||
+      window.confirm(`Deseja realmente LIMPAR todos os itens da Mesa #${currentTableNum}?`)
+    ) {
       onSaveTableItems(currentTableNum, []);
     }
   };
@@ -218,452 +269,663 @@ export const Tab1Pdv: React.FC<Tab1PdvProps> = ({
     });
   };
 
+  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Escape') {
+      setSearchTerm('');
+      return;
+    }
+    if (e.key === 'Enter' && a.enterAdicionaPrimeiro && filteredProducts.length > 0) {
+      e.preventDefault();
+      handleAddItem(filteredProducts[0]);
+    }
+  };
+
+  // Alt + setas troca de mesa sem tirar a mão do teclado.
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.altKey && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) {
+        e.preventDefault();
+        handleStepTable(e.key === 'ArrowRight' ? 1 : -1);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentTableNum]);
+
+  useEffect(() => {
+    if (!showAjustes) return;
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowAjustes(false);
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [showAjustes]);
+
+  const tileCols =
+    a.tamanhoItemCardapio === 'grande'
+      ? 'grid-cols-1'
+      : a.tamanhoItemCardapio === 'pequeno'
+      ? 'grid-cols-3'
+      : 'grid-cols-2';
+
+  const quickQty = a.quantidadesRapidas.length ? a.quantidadesRapidas : [1];
+  const panelPad = compact ? 'p-2.5' : 'p-4';
+
+  const statusInfo =
+    currentTable?.status === 'ocupada'
+      ? { label: 'Ocupada', cls: 'bg-rose-100 text-rose-700 border-rose-300' }
+      : currentTable?.status === 'conta_solicitada'
+      ? { label: 'Conta pedida', cls: 'bg-amber-100 text-amber-700 border-amber-300' }
+      : { label: 'Livre', cls: 'bg-emerald-100 text-emerald-700 border-emerald-300' };
+
   return (
-    <div className="space-y-4">
-      {/* Top Section: Table Selector 1 - 50 + Status info */}
-      <div className="bg-white rounded-xl shadow-xs border border-zinc-200 p-4">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-orange-600 text-white flex items-center justify-center font-bold">
-              <Hash className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="text-xs text-zinc-500 font-semibold uppercase tracking-wider">
-                Mesa / Comanda Ativa
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xl font-extrabold text-zinc-900">
-                  Mesa {currentTableNum}
-                </span>
-                <span
-                  className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
-                    currentTable?.status === 'ocupada'
-                      ? 'bg-rose-100 text-rose-800 border border-rose-300'
-                      : currentTable?.status === 'conta_solicitada'
-                      ? 'bg-amber-100 text-amber-800 border border-amber-300'
-                      : 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                  }`}
-                >
-                  {currentTable?.status === 'ocupada'
-                    ? '● Ocupada'
-                    : currentTable?.status === 'conta_solicitada'
-                    ? '▲ Conta Solicitada'
-                    : '○ Disponível'}
-                </span>
-                {currentTable?.garcom && (
-                  <span className="text-xs text-zinc-500 hidden sm:inline">
-                    &bull; Atendente: <strong>{currentTable.garcom}</strong>
-                  </span>
-                )}
+    <div className="space-y-3">
+      {/* ================================ BARRA DO CAIXA ================================ */}
+      <div className={cn('cp-card sticky top-0 z-20', panelPad)}>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+          {/* Seletor de mesa */}
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => handleStepTable(-1)}
+              className="cp-chip p-1.5 rounded-lg"
+              title="Mesa anterior (Alt + ←)"
+              aria-label="Mesa anterior"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <div className="text-center px-1 min-w-[6.5rem]">
+              <div className="cp-label cp-faint font-bold">Mesa / Comanda</div>
+              <div className="cp-text font-black leading-none text-2xl">
+                {String(currentTableNum).padStart(2, '0')}
               </div>
             </div>
+            <button
+              type="button"
+              onClick={() => handleStepTable(1)}
+              className="cp-chip p-1.5 rounded-lg"
+              title="Próxima mesa (Alt + →)"
+              aria-label="Próxima mesa"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
           </div>
 
-          {/* Quick Dropdown/Menu for Table 1 to 50 */}
-          <div className="flex flex-wrap items-center gap-2">
-            <label className="text-xs font-semibold text-zinc-600">
-              Mudar Mesa (1 - 50):
-            </label>
-            <select
-              value={currentTableNum}
-              onChange={(e) => handleSelectTable(Number(e.target.value))}
-              aria-label="Selecionar número da mesa de 1 a 50"
-              className="px-3 py-1.5 text-sm font-bold bg-zinc-50 border border-zinc-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-orange-500 text-zinc-800"
+          <div className="flex items-center gap-2">
+            <span
+              className={cn(
+                'text-[11px] font-bold px-2 py-0.5 rounded-full border',
+                statusInfo.cls
+              )}
             >
-              {Array.from({ length: 50 }, (_, i) => i + 1).map((n) => {
-                const t = tables.find((item) => item.numero === n);
-                const isOccupied = t?.status === 'ocupada';
-                const isRequested = t?.status === 'conta_solicitada';
-                const statusSymbol = isOccupied ? '🔴' : isRequested ? '🟡' : '🟢';
-                const valText = t && t.total > 0 ? ` (${formatCurrency(t.total)})` : '';
-                return (
-                  <option key={n} value={n}>
-                    {statusSymbol} Mesa {n < 10 ? `0${n}` : n} {valText}
-                  </option>
-                );
-              })}
-            </select>
-
-            {/* Quick Mesa 8 navigation */}
+              {statusInfo.label}
+            </span>
+            {currentTable?.garcom && (
+              <span className="text-[11px] cp-faint hidden xl:inline">
+                Atendente: <strong className="cp-muted">{currentTable.garcom}</strong>
+              </span>
+            )}
             <button
+              type="button"
               onClick={() => onNavigateTab(8)}
-              className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-zinc-300 bg-zinc-100 hover:bg-zinc-200 text-zinc-700 transition flex items-center gap-1.5"
+              className="cp-chip px-2.5 py-1 cp-small flex items-center gap-1.5"
+              title="Abrir mapa do salão"
             >
-              <span>Mapa do Salão</span>
+              <LayoutGrid className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Mapa do salão</span>
             </button>
+          </div>
 
-            {/* Price query modal button - Amarelo */}
+          {/* Total + ação principal */}
+          <div className="ml-auto flex items-end gap-3 sm:gap-5">
+            <div className="text-right">
+              <div className="cp-label cp-faint font-bold">Total da comanda</div>
+              <div className="cp-total font-black font-mono cp-accent">{formatCurrency(totalValue)}</div>
+              <div className="cp-small cp-faint mt-0.5">
+                {totalItemsCount} {totalItemsCount === 1 ? 'item' : 'itens'} &bull; taxa de serviço
+                entra no pagamento
+              </div>
+            </div>
+            <button
+              onClick={handlePay}
+              disabled={currentItems.length === 0}
+              className="cp-btn bg-emerald-600 text-white min-w-[9.5rem]"
+            >
+              <DollarSign className="w-5 h-5" />
+              <span>Pagar</span>
+              <kbd className="text-[10px] bg-black/25 rounded px-1 py-0.5 font-mono">F2</kbd>
+            </button>
+          </div>
+        </div>
+
+        {/* Régua de mesas (no lugar do dropdown com 50 linhas) */}
+        <div
+          ref={stripRef}
+          className="mt-3 flex items-center gap-1 overflow-x-auto no-scrollbar pb-0.5"
+          aria-label="Escolher mesa"
+        >
+          {Array.from({ length: 50 }, (_, i) => i + 1).map((n) => {
+            const t = tables.find((item) => item.numero === n);
+            const isActive = n === currentTableNum;
+            const status =
+              t?.status === 'ocupada'
+                ? 'ocupada'
+                : t?.status === 'conta_solicitada'
+                ? 'conta'
+                : 'livre';
+            return (
+              <button
+                key={n}
+                type="button"
+                data-mesa={n}
+                aria-current={isActive}
+                onClick={() => handleSelectTable(n)}
+                title={`Mesa ${n} — ${t && t.total > 0 ? formatCurrency(t.total) : 'sem itens'}`}
+                className={cn(
+                  'shrink-0 w-9 rounded-lg border font-extrabold text-xs transition-all relative',
+                  compact ? 'py-1' : 'py-1.5',
+                  isActive
+                    ? 'bg-orange-600 border-orange-600 text-white'
+                    : status === 'ocupada'
+                    ? 'bg-rose-50 border-rose-200 text-rose-600 hover:bg-rose-100'
+                    : status === 'conta'
+                    ? 'bg-amber-50 border-amber-200 text-amber-600 hover:bg-amber-100'
+                    : 'cp-chip'
+                )}
+              >
+                {n < 10 ? `0${n}` : n}
+                {status !== 'livre' && (
+                  <span
+                    className={cn(
+                      'absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full',
+                      status === 'ocupada' ? 'bg-rose-500' : 'bg-amber-500'
+                    )}
+                  />
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Ações secundárias + ajustes rápidos */}
+        <div className="mt-3 pt-3 border-t cp-line flex flex-wrap items-center gap-2">
+          {a.mostrarBotaoCozinha && (
+            <button
+              onClick={handleSendToKitchenAction}
+              disabled={currentItems.length === 0}
+              className="cp-btn bg-amber-400 text-zinc-950"
+            >
+              <ChefHat className="w-4 h-4" />
+              <span>Para a cozinha</span>
+            </button>
+          )}
+          {a.mostrarBotaoImprimir && (
+            <button
+              onClick={() => onPrintTableTicket(currentTableNum, currentItems)}
+              disabled={currentItems.length === 0}
+              className="cp-btn bg-sky-600 text-white"
+            >
+              <Printer className="w-4 h-4" />
+              <span>Imprimir comanda</span>
+            </button>
+          )}
+          <button
+            onClick={handleClearTable}
+            disabled={currentItems.length === 0}
+            className="cp-btn cp-soft cp-muted border cp-line"
+          >
+            <Trash2 className="w-4 h-4" />
+            <span>Limpar mesa</span>
+          </button>
+
+          {a.mostrarConsultaPreco && (
             <button
               onClick={() => setIsPriceLookupOpen(true)}
-              className="px-3 py-1.5 text-xs font-bold rounded-lg bg-amber-400 hover:bg-amber-500 text-zinc-950 flex items-center gap-1.5 shadow-xs transition"
+              className="cp-btn cp-soft cp-muted border cp-line"
             >
-              <HelpCircle className="w-3.5 h-3.5 text-zinc-900" />
-              <span>Consultar Preço</span>
+              <HelpCircle className="w-4 h-4" />
+              <span>Consultar preço</span>
             </button>
-          </div>
+          )}
+
+          {onUpdateAppearance && (
+            <div className="relative ml-auto">
+              <button
+                onClick={() => setShowAjustes((v) => !v)}
+                className={cn(
+                  'cp-btn border cp-line',
+                  showAjustes
+                    ? 'bg-orange-600 border-orange-600 text-white'
+                    : 'cp-soft cp-muted'
+                )}
+                title="Ajustes rápidos da tela do caixa"
+              >
+                <Settings2 className="w-4 h-4" />
+                <span>Ajustes rápidos</span>
+              </button>
+
+              {showAjustes && (
+                <>
+                  <div
+                    className="fixed inset-0 z-30"
+                    onClick={() => setShowAjustes(false)}
+                    aria-hidden="true"
+                  />
+                  <div className="absolute right-0 mt-2 z-40 w-[22rem] max-h-[70vh] overflow-y-auto cp-card p-4 shadow-2xl">
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="text-sm font-extrabold cp-text">Ajustes do caixa</h4>
+                      <button
+                        onClick={() => setShowAjustes(false)}
+                        className="p-1 rounded cp-faint"
+                        aria-label="Fechar ajustes"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <AppearanceControls
+                      aparencia={a}
+                      onChange={(patch) => onUpdateAppearance(patch)}
+                    />
+                    <button
+                      onClick={() => {
+                        setShowAjustes(false);
+                        onNavigateTab(4);
+                      }}
+                      className="mt-4 w-full cp-btn cp-soft cp-muted border cp-line"
+                    >
+                      <Settings2 className="w-4 h-4" />
+                      <span>Mais configurações (taxas, cupom, estoque)</span>
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
       {kitchenAlert && (
-        <div className="bg-emerald-50 border border-emerald-300 text-emerald-800 px-4 py-2.5 rounded-xl flex items-center justify-between text-xs font-semibold animate-in fade-in">
+        <div className="cp-card px-4 py-2.5 flex items-center justify-between cp-small font-semibold text-emerald-700">
           <div className="flex items-center gap-2">
             <ChefHat className="w-4 h-4 text-emerald-600" />
             <span>{kitchenAlert}</span>
           </div>
-          <button
-            onClick={() => onNavigateTab(9)}
-            className="text-emerald-700 hover:underline"
-          >
-            Acompanhar na Cozinha &rarr;
+          <button onClick={() => onNavigateTab(9)} className="text-emerald-600 hover:underline">
+            Acompanhar na cozinha &rarr;
           </button>
         </div>
       )}
 
-      {/* Main 2-Column Layout: Left PDV Items Table, Right Fast Product Catalog */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-        {/* Left Column: Active Order Items (Col 7) */}
-        <div className="lg:col-span-7 bg-white rounded-xl shadow-xs border border-zinc-200 flex flex-col min-h-[580px]">
-          {/* Barcode & Search input bar */}
-          <div className="p-3 bg-zinc-50 border-b border-zinc-200">
-            <div className="flex flex-col sm:flex-row gap-2">
-              <div className="relative flex-1">
-                <Search className="w-4 h-4 text-zinc-400 absolute left-3 top-3" />
+      {/* =========================== COMANDA + CARDÁPIO =========================== */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
+        {/* ---------------- Comanda da mesa ---------------- */}
+        <div
+          className={cn(
+            'lg:col-span-7 cp-card flex flex-col',
+            compact ? 'min-h-[420px]' : 'min-h-[500px]'
+          )}
+        >
+          <div className={cn('flex items-center justify-between gap-3 border-b cp-line', panelPad)}>
+            <h3 className="font-bold cp-text flex items-center gap-2 text-sm">
+              <Utensils className="w-4 h-4 cp-accent" />
+              <span>Comanda da mesa {String(currentTableNum).padStart(2, '0')}</span>
+              <span className="cp-soft cp-faint cp-small font-bold px-2 py-0.5 rounded-full border cp-line">
+                {currentItems.length} {currentItems.length === 1 ? 'produto' : 'produtos'}
+              </span>
+            </h3>
+
+            {a.mostrarObsMesa && (
+              <div className="flex items-center gap-1.5 min-w-0">
+                <Tag className="w-3.5 h-3.5 text-amber-500 shrink-0" />
                 <input
-                  ref={searchInputRef}
                   type="text"
-                  placeholder="Escanear código EAN ou digitar nome..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 text-sm bg-white border border-zinc-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-orange-500 font-medium text-zinc-800"
+                  value={mesaObservacaoInput}
+                  onChange={(e) => setMesaObservacaoInput(e.target.value)}
+                  onBlur={() => onSaveTableObservation?.(currentTableNum, mesaObservacaoInput)}
+                  placeholder="Obs. da mesa (aniversário, alergia...)"
+                  aria-label="Observação da mesa"
+                  className="cp-input w-40 sm:w-64 px-2.5 py-1 cp-small"
                 />
               </div>
-
-              {/* Quantity Selector: default 1 */}
-              <div className="flex items-center space-x-1.5">
-                <span className="text-xs text-zinc-500 font-semibold">Qtd:</span>
-                <div className="flex items-center border border-zinc-300 rounded-lg bg-white overflow-hidden">
-                  <button
-                    type="button"
-                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                    className="px-2.5 py-1.5 hover:bg-zinc-200 text-zinc-700 font-extrabold text-base rounded-lg transition"
-                  >
-                    -
-                  </button>
-                  <input
-                    type="number"
-                    min="1"
-                    aria-label="Quantidade do item"
-                    value={quantity}
-                    onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-                    className="w-12 text-center text-sm font-bold text-zinc-900 border-x border-zinc-200 py-1 focus:outline-hidden"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setQuantity(quantity + 1)}
-                    className="px-2.5 py-1.5 hover:bg-zinc-200 text-zinc-700 font-extrabold text-base rounded-lg transition"
-                  >
-                    +
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Optional observation input */}
-            <div className="mt-2 flex items-center gap-2">
-              <input
-                type="text"
-                placeholder="Observação do item (Ex: Sem cebola, gelo e limão, bem passado...)"
-                value={itemObservation}
-                onChange={(e) => setItemObservation(e.target.value)}
-                className="flex-1 px-3 py-1.5 text-xs bg-white border border-zinc-300 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-orange-500 text-zinc-700"
-              />
-            </div>
-          </div>
-
-          {/* Quick Mesa Observation */}
-          <div className="px-4 py-2.5 bg-amber-50/60 border-b border-amber-100 flex items-center gap-2">
-            <label htmlFor="mesa-obs" className="text-xs font-extrabold text-amber-800 uppercase tracking-wide whitespace-nowrap">Obs. Mesa:</label>
-            <input
-              id="mesa-obs"
-              type="text"
-              value={mesaObservacaoInput}
-              onChange={(e) => setMesaObservacaoInput(e.target.value)}
-              onBlur={() => { if (onSaveTableObservation) onSaveTableObservation(currentTableNum, mesaObservacaoInput); }}
-              placeholder="Ex: Cliente alérgico, aniversário, sem gelo..."
-              className="flex-1 bg-white border border-amber-200 rounded-lg px-2.5 py-1 text-xs text-zinc-800 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-amber-300 transition"
-            />
-            {currentTable?.observacaoMesa && (
-              <span className="text-[10px] text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded font-medium truncate max-w-[160px]">{currentTable.observacaoMesa}</span>
             )}
           </div>
 
-          {/* Table Header */}
-          <div className="grid grid-cols-12 bg-zinc-100 px-4 py-2 text-[11px] font-bold text-zinc-600 uppercase tracking-wider border-b border-zinc-200">
-            <span className="col-span-1 text-center">Qtd</span>
-            <span className="col-span-6">Descrição Mercadoria</span>
-            <span className="col-span-2 text-right">Unitário</span>
-            <span className="col-span-2 text-right">Total</span>
-            <span className="col-span-1 text-center">Ações</span>
-          </div>
-
-          {/* Items List */}
-          <div className="flex-1 overflow-y-auto divide-y divide-zinc-100 min-h-[280px] max-h-[360px]">
+          <div className="flex-1 overflow-y-auto max-h-[440px]">
             {currentItems.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 text-zinc-400">
-                <Utensils className="w-12 h-12 text-zinc-300 mb-2 stroke-[1.5]" />
-                <p className="font-semibold text-sm text-zinc-500">
-                  Comanda da Mesa #{currentTableNum} vazia
-                </p>
-                <p className="text-xs text-zinc-400 mt-1">
-                  Selecione os produtos ao lado ou busque por código/nome.
+              <div className="h-full flex flex-col items-center justify-center py-16 cp-faint text-center px-6">
+                <Utensils className="w-12 h-12 mb-3 opacity-40" />
+                <p className="cp-muted font-bold cp-item">Comanda vazia</p>
+                <p className="cp-small mt-1 max-w-sm">
+                  Toque num produto ao lado, bipe o código de barras ou digite e aperte{' '}
+                  <kbd className="cp-soft border cp-line rounded px-1 font-mono">Enter</kbd> para
+                  lançar o primeiro resultado.
                 </p>
               </div>
             ) : (
               currentItems.map((item, idx) => (
                 <div
                   key={item.id || idx}
-                  className="grid grid-cols-12 items-center px-4 py-2.5 text-xs hover:bg-orange-50/40 transition-colors"
+                  className={cn(
+                    'cp-row flex items-center gap-3 px-3 sm:px-4 hover:bg-orange-50/40 transition-colors',
+                    compact ? 'py-1' : 'py-1.5'
+                  )}
                 >
-                  <div className="col-span-1 flex items-center justify-center">
-                    <span className="font-bold text-zinc-900 bg-zinc-100 px-2 py-0.5 rounded text-xs border border-zinc-200">
-                      {item.quantidade}
-                    </span>
-                  </div>
-                  <div className="col-span-6 pr-2">
-                    <div className="font-semibold text-zinc-900 leading-tight">
-                      {item.descricao}
-                    </div>
-                    <div className="text-[10px] text-zinc-400 font-mono">
-                      EAN: {item.ean} {item.setor ? `&bull; ${item.setor}` : ''}
-                    </div>
-                    {item.observacao && (
-                      <div className="text-[10px] text-amber-700 font-medium">
-                        Obs: {item.observacao}
-                      </div>
-                    )}
-                  </div>
-                  <div className="col-span-2 text-right font-medium text-zinc-600">
-                    {formatCurrency(item.precoUnitario)}
-                  </div>
-                  <div className="col-span-2 text-right font-bold text-zinc-900">
-                    {formatCurrency(item.valorTotal)}
-                  </div>
-                  <div className="col-span-1 flex items-center justify-center space-x-1">
+                  <div className="flex items-center gap-0.5 cp-soft rounded-lg border cp-line shrink-0">
                     <button
                       onClick={() => handleUpdateItemQuantity(idx, -1)}
+                      className="p-1 hover:opacity-70 rounded-l-lg cp-muted"
                       title="Diminuir"
-                      className="p-1 hover:bg-zinc-200 rounded text-zinc-600"
+                      aria-label={`Diminuir quantidade de ${item.descricao}`}
                     >
-                      <Minus className="w-3 h-3" />
+                      <Minus className="w-3.5 h-3.5" />
                     </button>
+                    <span className="cp-num w-7 text-center font-black cp-text">{item.quantidade}</span>
                     <button
-                      onClick={() => handleRemoveItem(idx)}
-                      title="Excluir item"
-                      className="p-1 hover:bg-rose-100 rounded text-rose-600"
+                      onClick={() => handleUpdateItemQuantity(idx, 1)}
+                      className="p-1 hover:opacity-70 rounded-r-lg cp-muted"
+                      title="Aumentar"
+                      aria-label={`Aumentar quantidade de ${item.descricao}`}
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
+                      <Plus className="w-3.5 h-3.5" />
                     </button>
                   </div>
+
+                  <div className="flex-1 min-w-0">
+                    <div className="cp-item cp-text font-semibold leading-tight truncate">
+                      {item.descricao}
+                    </div>
+                    <div className="cp-small cp-faint flex items-center gap-1.5 flex-wrap">
+                      {a.mostrarSetor && <span>{item.setor}</span>}
+                      {a.mostrarEan && (
+                        <>
+                          <span>&bull;</span>
+                          <span className="font-mono">{item.ean}</span>
+                        </>
+                      )}
+                      {item.observacao && (
+                        <>
+                          <span>&bull;</span>
+                          <span className="text-amber-600 font-bold">Obs: {item.observacao}</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {a.mostrarUnitarioNoItem && (
+                    <div className="hidden sm:block text-right shrink-0">
+                      <div className="text-[9px] cp-faint uppercase font-bold">unit.</div>
+                      <div className="cp-small cp-muted font-mono">
+                        {formatCurrency(item.precoUnitario)}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="cp-num font-black font-mono cp-text text-right w-24 shrink-0">
+                    {formatCurrency(item.valorTotal)}
+                  </div>
+
+                  <button
+                    onClick={() => handleRemoveItem(idx)}
+                    className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-100 transition shrink-0"
+                    title="Excluir item"
+                    aria-label={`Excluir ${item.descricao}`}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </div>
               ))
             )}
           </div>
 
-          {/* Totals and Summary Block */}
-          <div className="bg-gradient-to-r from-zinc-900 via-zinc-900 to-zinc-800 text-white p-5 border-t border-zinc-700/60 shadow-[inset_0_2px_12px_rgba(0,0,0,0.15)]">
-            <div className="flex justify-between items-center mb-3 text-xs text-zinc-400 font-medium">
-              <div className="flex items-center gap-3">
-                <span>Mesa <strong className="text-white">#{currentTableNum}</strong></span>
-                <span className="w-1 h-1 rounded-full bg-zinc-600"></span>
-                <span>Total de Itens: <strong className="text-white">{totalItemsCount} un</strong></span>
+          {/* Rodapé: quantidade rápida, observação do item e total */}
+          <div className={cn('mt-auto border-t cp-line cp-inset', panelPad)}>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-[10px] cp-faint font-bold uppercase mr-0.5">Qtd</span>
+                {quickQty.map((q) => (
+                  <button
+                    key={q}
+                    type="button"
+                    onClick={() => setQuantity(q)}
+                    aria-pressed={quantity === q}
+                    className={cn(
+                      'w-9 py-1 rounded-lg text-sm font-black border transition',
+                      quantity === q
+                        ? 'bg-orange-600 border-orange-600 text-white'
+                        : 'cp-chip'
+                    )}
+                  >
+                    {q}
+                  </button>
+                ))}
+                <div className="flex items-center gap-0.5 cp-soft rounded-lg border cp-line ml-1">
+                  <button
+                    type="button"
+                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                    className="p-1.5 hover:opacity-70 rounded-l-lg cp-muted"
+                    aria-label="Diminuir quantidade"
+                  >
+                    <Minus className="w-3.5 h-3.5" />
+                  </button>
+                  <input
+                    type="number"
+                    min={1}
+                    aria-label="Quantidade do item"
+                    value={quantity}
+                    onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                    className="w-11 text-center cp-num font-black cp-text bg-transparent focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setQuantity(quantity + 1)}
+                    className="p-1.5 hover:opacity-70 rounded-r-lg cp-muted"
+                    aria-label="Aumentar quantidade"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
-              <span>Comanda Pro v2.0</span>
-            </div>
 
-            <div className="flex justify-between items-baseline mb-5">
-              <div>
-                <span className="text-xs font-semibold tracking-widest text-zinc-400 uppercase block mb-0.5">Total a Pagar</span>
-                <span className="text-sm font-medium text-zinc-300">Subtotal + taxa de serviço</span>
+              {a.mostrarObsItem && (
+                <input
+                  type="text"
+                  value={itemObservation}
+                  onChange={(e) => setItemObservation(e.target.value)}
+                  placeholder="Obs. do próximo item (sem cebola, sem gelo...)"
+                  aria-label="Observação do item"
+                  className="cp-input px-2.5 py-1.5 cp-small flex-1 min-w-[12rem]"
+                />
+              )}
+
+              <div className="text-right">
+                <div className="cp-label cp-faint font-bold">
+                  {currentItems.length} {currentItems.length === 1 ? 'linha' : 'linhas'} &bull;{' '}
+                  {totalItemsCount} un
+                </div>
+                <div className="cp-total cp-text font-black font-mono">{formatCurrency(totalValue)}</div>
               </div>
-              <span className="text-4xl font-extrabold text-orange-300 tracking-tighter font-mono drop-shadow-md leading-none">
-                {formatCurrency(totalValue)}
-              </span>
-            </div>
-
-            {/* Action Buttons: clean, large, clear */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {/* Verde: Pagar */}
-              <button
-                onClick={handlePay}
-                disabled={currentItems.length === 0}
-                className="py-3 px-3 rounded-xl font-extrabold text-sm bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed text-white flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/20 transition-all"
-              >
-                <DollarSign className="w-4 h-4" />
-                <span>Pagar (F2)</span>
-              </button>
-
-              {/* Azul: Impressão isolada de cada mesa */}
-              <button
-                onClick={() => onPrintTableTicket(currentTableNum, currentItems)}
-                disabled={currentItems.length === 0}
-                className="py-3 px-3 rounded-xl font-extrabold text-sm bg-sky-600 hover:bg-sky-500 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed text-white flex items-center justify-center gap-2 shadow-lg shadow-sky-900/20 transition-all"
-              >
-                <Printer className="w-4 h-4" />
-                <span>Imprimir Mesa</span>
-              </button>
-
-              {/* Amarelo/Orange: Enviar Cozinha */}
-              <button
-                onClick={handleSendToKitchenAction}
-                disabled={currentItems.length === 0}
-                className="py-3 px-3 rounded-xl font-extrabold text-sm bg-amber-400 hover:bg-amber-300 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed text-zinc-950 flex items-center justify-center gap-2 shadow-lg shadow-amber-900/10 transition-all"
-              >
-                <ChefHat className="w-4 h-4 text-zinc-950" />
-                <span>P/ Cozinha</span>
-              </button>
-
-              {/* Vermelho: Limpar */}
-              <button
-                onClick={handleClearTable}
-                disabled={currentItems.length === 0}
-                className="py-3 px-3 rounded-xl font-extrabold text-sm bg-rose-600 hover:bg-rose-500 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed text-white flex items-center justify-center gap-2 shadow-lg shadow-rose-900/20 transition-all"
-              >
-                <Trash2 className="w-4 h-4" />
-                <span>Limpar</span>
-              </button>
             </div>
           </div>
         </div>
 
-        {/* Right Column: Fast Product Catalog & Quick Add (Col 5) */}
-        <div className="lg:col-span-5 bg-white rounded-xl shadow-xs border border-zinc-200 p-4 flex flex-col">
-          <div className="flex items-center justify-between pb-3 border-b border-zinc-200">
-            <div className="flex items-center space-x-2">
-              <ShoppingBag className="w-4 h-4 text-orange-600" />
-              <h3 className="font-bold text-sm text-zinc-900">
-                Cardápio Rápido / Toque
-              </h3>
+        {/* ---------------- Cardápio rápido ---------------- */}
+        <div className="lg:col-span-5 cp-card flex flex-col overflow-hidden">
+          <div className={cn('border-b cp-line space-y-2.5', panelPad)}>
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold cp-text text-sm">Cardápio</h3>
+              <span className="cp-small cp-faint font-semibold">
+                {filteredProducts.length} {filteredProducts.length === 1 ? 'produto' : 'produtos'}
+              </span>
             </div>
-            <span className="text-[11px] text-zinc-500">
-              {filteredProducts.length} itens disponíveis
-            </span>
+
+            <div className="relative">
+              <Search className="w-4 h-4 cp-faint absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                ref={searchInputRef}
+                type="text"
+                placeholder="Buscar ou bipar o código de barras..."
+                aria-label="Buscar produto"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onKeyDown={handleSearchKeyDown}
+                className={cn('cp-input w-full pl-9 pr-9 font-semibold cp-num', compact ? 'py-1.5' : 'py-2.5')}
+              />
+              {searchTerm && (
+                <button
+                  onClick={() => {
+                    setSearchTerm('');
+                    searchInputRef.current?.focus();
+                  }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded cp-faint"
+                  aria-label="Limpar busca"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+
+            <div className="flex items-center gap-1 overflow-x-auto no-scrollbar -mx-1 px-1">
+              {categories.map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => setActiveCategory(cat)}
+                  className={cn(
+                    'px-2.5 py-1 cp-small whitespace-nowrap shrink-0',
+                    activeCategory === cat ? 'cp-chip cp-chip-on' : 'cp-chip'
+                  )}
+                >
+                  {cat === 'TODOS' ? 'Tudo' : cat}
+                </button>
+              ))}
+            </div>
           </div>
 
-          {/* Category Tabs */}
-          <div className="flex items-center gap-1 overflow-x-auto py-2.5 text-xs no-scrollbar">
-            {categories.map((cat) => (
-              <button
-                key={cat}
-                onClick={() => setActiveCategory(cat)}
-                className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
-                  activeCategory === cat
-                    ? 'bg-orange-600 text-white shadow-xs'
-                    : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200'
-                }`}
-              >
-                {cat}
-              </button>
-            ))}
-          </div>
-
-          {/* Products Grid */}
-          <div className="flex-1 overflow-y-auto grid grid-cols-2 gap-2.5 pr-1 max-h-[500px]">
-            {filteredProducts.map((prod) => (
-              <div
-                key={prod.id}
-                onClick={() => handleAddItem(prod)}
-                className="p-3 rounded-lg border border-zinc-200 hover:border-orange-500 bg-zinc-50/70 hover:bg-orange-50/30 cursor-pointer transition-all flex flex-col justify-between group shadow-2xs hover:shadow-xs"
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-[10px] font-bold text-orange-600 uppercase tracking-wider">
-                      {prod.setor}
-                    </span>
-                    <span className="text-[10px] text-zinc-400 font-mono">
-                      Estq: {prod.estoque}
-                    </span>
-                  </div>
-                  <h4 className="font-bold text-xs text-zinc-900 group-hover:text-orange-900 line-clamp-2">
-                    {prod.descricao}
-                  </h4>
-                </div>
-
-                <div className="mt-3 flex items-center justify-between pt-2 border-t border-zinc-200/80">
-                  <span className="font-extrabold text-sm text-emerald-700">
-                    {formatCurrency(prod.precoVenda)}
-                  </span>
-                  <div className="w-6 h-6 rounded-md bg-white border border-zinc-200 group-hover:bg-orange-600 group-hover:text-white flex items-center justify-center text-zinc-700 transition">
-                    <Plus className="w-3.5 h-3.5" />
-                  </div>
-                </div>
+          <div className={cn('flex-1 overflow-y-auto grid gap-2 content-start p-3', tileCols)}>
+            {filteredProducts.length === 0 ? (
+              <div className="col-span-full py-12 text-center cp-faint cp-small font-semibold">
+                Nenhum produto encontrado para &ldquo;{searchTerm}&rdquo;.
               </div>
-            ))}
+            ) : (
+              filteredProducts.map((prod) => {
+                const estoqueBaixo = a.mostrarEstoque && prod.estoque <= 5;
+                return (
+                  <button
+                    key={prod.id}
+                    type="button"
+                    onClick={() => handleAddItem(prod)}
+                    className="cp-tile text-left flex flex-col justify-between gap-1"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="cp-item cp-text font-bold leading-tight line-clamp-2 text-left">
+                        {prod.descricao}
+                      </span>
+                      {a.mostrarEstoque && (
+                        <span
+                          className={cn(
+                            'shrink-0 text-[9px] font-black px-1.5 py-0.5 rounded border',
+                            estoqueBaixo
+                              ? 'bg-rose-100 text-rose-600 border-rose-200'
+                              : 'cp-soft cp-faint border-transparent'
+                          )}
+                          title="Estoque atual"
+                        >
+                          {prod.estoque}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2 pt-1 mt-1 border-t cp-line w-full">
+                      {a.mostrarSetor ? (
+                        <span className="text-[9px] cp-faint font-bold uppercase tracking-wider truncate">
+                          {prod.setor}
+                        </span>
+                      ) : (
+                        <span />
+                      )}
+                      {quantity > 1 && (
+                        <span className="text-[9px] font-black text-orange-600 bg-orange-100 rounded px-1 py-0.5">
+                          x{quantity}
+                        </span>
+                      )}
+                      <span className="cp-price cp-text font-black font-mono ml-auto">
+                        {formatCurrency(prod.precoVenda)}
+                      </span>
+                    </div>
+                  </button>
+                );
+              })
+            )}
           </div>
 
-          {/* Bottom Bar: Sair button & Quick Switch */}
-          <div className="pt-3 mt-3 border-t border-zinc-200 flex items-center justify-between text-xs text-zinc-500">
-            <span>Comanda Pro &bull; Atendimento Ágil</span>
-            <button
-              onClick={() => onNavigateTab(8)}
-              className="text-zinc-600 hover:text-rose-600 font-semibold flex items-center gap-1 transition"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-              <span>Sair p/ Mesas</span>
-            </button>
+          <div className="px-3 py-2 border-t cp-line flex items-center gap-1.5 cp-small cp-faint font-semibold">
+            <Keyboard className="w-3.5 h-3.5 shrink-0" />
+            <span>
+              {a.enterAdicionaPrimeiro && (
+                <>
+                  <kbd className="cp-soft border cp-line rounded px-1 font-mono">Enter</kbd> lança
+                  &nbsp;&bull;&nbsp;
+                </>
+              )}
+              <kbd className="cp-soft border cp-line rounded px-1 font-mono">F2</kbd> paga
+              &nbsp;&bull;&nbsp;
+              <kbd className="cp-soft border cp-line rounded px-1 font-mono">Alt</kbd>+
+              <kbd className="cp-soft border cp-line rounded px-1 font-mono">←/→</kbd> troca de mesa
+            </span>
           </div>
         </div>
       </div>
 
-      {/* Modal Consulta de Mercadoria / Preço (Amarelo) */}
+      {/* ================= MODAL DE CONSULTA DE PREÇO (opcional) ================= */}
       {isPriceLookupOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-xl w-full p-5 border border-zinc-200">
-            <div className="flex items-center justify-between pb-3 border-b border-zinc-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="cp-card max-w-xl w-full p-5 shadow-2xl">
+            <div className="flex items-center justify-between pb-3 border-b cp-line">
               <div className="flex items-center gap-2">
                 <Tag className="w-5 h-5 text-amber-500" />
-                <h3 className="font-bold text-base text-zinc-900">
-                  Consulta Rápida de Mercadoria / Preço
-                </h3>
+                <h3 className="font-bold text-base cp-text">Consulta rápida de mercadoria / preço</h3>
               </div>
               <button
                 onClick={() => setIsPriceLookupOpen(false)}
-                className="p-1 rounded text-zinc-400 hover:text-zinc-700"
+                className="p-1 rounded cp-faint"
+                aria-label="Fechar consulta"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             <div className="mt-4 relative">
-              <Search className="w-4 h-4 text-zinc-400 absolute left-3 top-3" />
+              <Search className="w-4 h-4 cp-faint absolute left-3 top-3" />
               <input
                 type="text"
                 autoFocus
-                placeholder="Digite nome do produto ou bipe o código EAN..."
+                placeholder="Digite o nome do produto ou bipe o código EAN..."
                 value={priceLookupSearch}
                 onChange={(e) => setPriceLookupSearch(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 text-sm bg-zinc-50 border border-zinc-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-amber-500 font-medium"
+                className="cp-input w-full pl-9 pr-3 py-2 text-sm font-medium"
               />
             </div>
 
             <div className="mt-4 max-h-[340px] overflow-y-auto divide-y divide-zinc-100">
               {lookupProducts.length === 0 ? (
-                <div className="text-center py-8 text-zinc-400 text-xs">
+                <div className="text-center py-8 cp-faint text-xs">
                   Nenhum produto encontrado com o termo pesquisado.
                 </div>
               ) : (
                 lookupProducts.map((p) => (
                   <div
                     key={p.id}
-                    className="py-2.5 flex items-center justify-between hover:bg-zinc-50 px-2 rounded"
+                    className="py-2.5 flex items-center justify-between hover:bg-orange-50/40 px-2 rounded"
                   >
-                    <div>
-                      <div className="font-bold text-xs text-zinc-900">{p.descricao}</div>
-                      <div className="text-[11px] text-zinc-500 font-mono">
-                        Cód EAN: {p.ean} &bull; Setor: {p.setor} &bull; Estoque: {p.estoque} UN
+                    <div className="min-w-0">
+                      <div className="font-bold cp-item cp-text truncate">{p.descricao}</div>
+                      <div className="cp-small cp-faint font-mono">
+                        {a.mostrarEan && <>EAN {p.ean} &bull; </>}
+                        {p.setor} &bull; Estoque {p.estoque} UN
                       </div>
                     </div>
-                    <div className="text-right flex items-center gap-3">
-                      <span className="font-extrabold text-base text-emerald-700">
+                    <div className="text-right flex items-center gap-3 shrink-0">
+                      <span className="cp-price cp-text font-black font-mono">
                         {formatCurrency(p.precoVenda)}
                       </span>
                       <button
@@ -671,7 +933,7 @@ export const Tab1Pdv: React.FC<Tab1PdvProps> = ({
                           handleAddItem(p, 1);
                           setIsPriceLookupOpen(false);
                         }}
-                        className="px-2.5 py-1 text-xs font-bold rounded bg-emerald-600 hover:bg-emerald-700 text-white"
+                        className="px-2.5 py-1 cp-small font-bold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white"
                       >
                         + Lançar
                       </button>
@@ -681,12 +943,12 @@ export const Tab1Pdv: React.FC<Tab1PdvProps> = ({
               )}
             </div>
 
-            <div className="mt-4 pt-3 border-t border-zinc-200 flex justify-end">
+            <div className="mt-4 pt-3 border-t cp-line flex justify-end">
               <button
                 onClick={() => setIsPriceLookupOpen(false)}
-                className="px-4 py-2 text-xs font-bold rounded-lg bg-zinc-200 hover:bg-zinc-300 text-zinc-800"
+                className="px-4 py-2 cp-small font-bold rounded-lg cp-soft cp-muted"
               >
-                Fechar Consulta
+                Fechar consulta
               </button>
             </div>
           </div>

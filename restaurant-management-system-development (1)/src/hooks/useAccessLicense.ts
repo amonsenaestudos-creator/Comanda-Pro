@@ -20,7 +20,18 @@ export interface AccessLicenseState {
   activate: (key: string) => Promise<boolean>;
 }
 
-const RECHECK_INTERVAL_MS = 5 * 60 * 1000;
+/**
+ * O caixa é revalidado no Firestore a cada 2 minutos (e também quando a janela
+ * volta a ficar visível / recebe foco). Assim, trocar `ativa` para false no
+ * Firebase Console bloqueia o computador em poucos minutos.
+ */
+const RECHECK_INTERVAL_MS = 2 * 60 * 1000;
+
+const MSG_BLOQUEADO_POR_DESATIVACAO =
+  'A licença deste caixa foi desativada no servidor (ativa: false). Fale com a Conta Bahia para reativar.';
+
+const MSG_SEM_CONFIRMACAO =
+  'O caixa estava liberado, mas a licença não pôde ser confirmada e a tolerância offline acabou. Reconecte a internet e informe a chave novamente.';
 
 function getActivationErrorMessage(error: unknown): string {
   if (error instanceof InvalidAccessKeyError || error instanceof LicenseConfigurationError) {
@@ -56,7 +67,7 @@ export function useAccessLicense(): AccessLicenseState {
       setOffline(isOffline);
       setMessage(
         isOffline
-          ? 'Sem conexão com o servidor. O caixa ficará liberado apenas até o fim da licença offline.'
+          ? 'Sem conexão com o servidor. O caixa fica liberado pela tolerância offline e precisa reconectar para continuar.'
           : null
       );
       setStatus('active');
@@ -80,7 +91,7 @@ export function useAccessLicense(): AccessLicenseState {
             finishAsActive(cachedLicense, true);
           } else {
             setMessage(
-              'É necessário estar conectado à internet para validar ou renovar o acesso deste caixa.'
+              'É necessário estar conectado à internet para confirmar que a licença está ativa.'
             );
             setStatus('locked');
           }
@@ -126,12 +137,13 @@ export function useAccessLicense(): AccessLicenseState {
 
     let cancelled = false;
     let requestInProgress = false;
+    const offlineUntilMs = new Date(license.offlineUntil).getTime();
 
-    const lockExpiredLease = () => {
+    const lock = (reason: string) => {
       clearSavedActivation();
       setLicense(null);
       setOffline(false);
-      setMessage('A licença venceu ou não pôde ser confirmada. Informe a nova chave mensal para continuar.');
+      setMessage(reason);
       setStatus('locked');
     };
 
@@ -139,27 +151,26 @@ export function useAccessLicense(): AccessLicenseState {
       if (cancelled || requestInProgress) return;
       requestInProgress = true;
       try {
-        const renewedLicense = await refreshSavedLicense();
+        const confirmedLicense = await refreshSavedLicense();
         if (cancelled) return;
-        if (!renewedLicense) {
-          setLicense(null);
-          setOffline(false);
-          setMessage('A licença não está mais ativa. Informe a chave mensal atual para continuar.');
-          setStatus('locked');
+        if (!confirmedLicense) {
+          // O servidor respondeu e a chave não está mais liberada (ativa: false).
+          lock(MSG_BLOQUEADO_POR_DESATIVACAO);
           return;
         }
-        setLicense(renewedLicense);
+        setLicense(confirmedLicense);
         setOffline(false);
         setMessage(null);
       } catch {
         if (cancelled) return;
-        if (Date.now() >= new Date(license.leaseExpiresAt).getTime()) {
-          lockExpiredLease();
+        // Falha de rede: mantém o caixa aberto só dentro da tolerância offline.
+        if (Date.now() >= offlineUntilMs) {
+          lock(MSG_SEM_CONFIRMACAO);
           return;
         }
         setOffline(true);
         setMessage(
-          'Sem conexão com o servidor. O caixa continuará disponível somente durante o prazo da licença offline.'
+          'Sem conexão com o servidor. O caixa continua liberado pela tolerância offline.'
         );
       } finally {
         requestInProgress = false;
@@ -167,11 +178,10 @@ export function useAccessLicense(): AccessLicenseState {
     };
 
     const interval = window.setInterval(() => void recheck(), RECHECK_INTERVAL_MS);
-    const expirationTimer = window.setTimeout(
-      () => {
-        if (Date.now() >= new Date(license.leaseExpiresAt).getTime()) lockExpiredLease();
-      },
-      Math.max(0, new Date(license.leaseExpiresAt).getTime() - Date.now())
+    // Se a tolerância offline estourar sem conseguir revalidar, bloqueia na hora.
+    const offlineDeadlineTimer = window.setTimeout(
+      () => void recheck(),
+      Math.max(0, offlineUntilMs - Date.now())
     );
     const onVisible = () => {
       if (document.visibilityState === 'visible') void recheck();
@@ -184,7 +194,7 @@ export function useAccessLicense(): AccessLicenseState {
     return () => {
       cancelled = true;
       window.clearInterval(interval);
-      window.clearTimeout(expirationTimer);
+      window.clearTimeout(offlineDeadlineTimer);
       window.removeEventListener('online', recheck);
       window.removeEventListener('focus', recheck);
       document.removeEventListener('visibilitychange', onVisible);

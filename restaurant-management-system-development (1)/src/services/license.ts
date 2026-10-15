@@ -1,25 +1,30 @@
-import { doc, getDoc, Timestamp } from '@firebase/firestore';
+import { doc, getDoc } from '@firebase/firestore';
 import { firestoreDb, hasLicenseBackendConfig } from './firebase';
+import { avaliarLicenca } from './licenseRules';
 
 const SAVED_KEY_STORAGE = 'comandapro_license_key_v2';
 const SAVED_STATUS_STORAGE = 'comandapro_license_cache_v2';
-const MAX_OFFLINE_SECONDS = 24 * 60 * 60; // Permite até 24h offline para caixas já validados
+/** Tolerância de internet caída: caixa já liberado segue funcionando por até 24h. */
+const MAX_OFFLINE_SECONDS = 24 * 60 * 60;
 
 export interface LicenseInfo {
   restaurantName: string;
-  expiresAt: string;
-  leaseExpiresAt: string;
-  periodId: string;
+  /** Data/hora (ISO) da última vez que o servidor confirmou `ativa: true`. */
+  verifiedAt: string;
+  /** Fim da tolerância offline (ISO). Depois disso é preciso reconectar para revalidar. */
+  offlineUntil: string;
+  /** Sempre true quando a licença é entregue ao app: o bloqueio é feito antes disso. */
+  ativa: true;
 }
 
 interface StoredLicenseCache {
   restaurantName: string;
-  expiresAt: string;
+  /** epoch em segundos da última confirmação online */
   verifiedAt: number;
 }
 
 export class InvalidAccessKeyError extends Error {
-  constructor(message = 'A chave informada é inválida, expirada ou inativa.') {
+  constructor(message = 'Chave inválida ou desativada. O caixa só funciona com ativa: true.') {
     super(message);
     this.name = 'InvalidAccessKeyError';
   }
@@ -56,7 +61,12 @@ function getSavedCache(): StoredLicenseCache | null {
   try {
     const raw = localStorage.getItem(SAVED_STATUS_STORAGE);
     if (!raw) return null;
-    return JSON.parse(raw) as StoredLicenseCache;
+    const parsed = JSON.parse(raw) as Partial<StoredLicenseCache>;
+    if (typeof parsed?.verifiedAt !== 'number') return null;
+    return {
+      restaurantName: parsed.restaurantName || 'Comanda Pro',
+      verifiedAt: parsed.verifiedAt,
+    };
   } catch {
     return null;
   }
@@ -83,35 +93,36 @@ export function isLicenseBackendConfigured(): boolean {
   return hasLicenseBackendConfig;
 }
 
+function montarLicenca(restaurantName: string, verifiedAtSec: number): LicenseInfo {
+  const offlineUntilSec = verifiedAtSec + MAX_OFFLINE_SECONDS;
+  return {
+    restaurantName,
+    verifiedAt: new Date(verifiedAtSec * 1000).toISOString(),
+    offlineUntil: new Date(offlineUntilSec * 1000).toISOString(),
+    ativa: true,
+  };
+}
+
+/**
+ * Licença guardada neste computador, aceita apenas dentro da tolerância offline.
+ * Não existe mais validade por data: se `ativa` foi trocado para false no
+ * Firestore, o bloqueio chega na próxima verificação online (ou ao expirar a
+ * tolerância offline).
+ */
 export async function getCachedLicense(): Promise<LicenseInfo | null> {
   const cache = getSavedCache();
   if (!cache) return null;
 
-  const now = Math.floor(Date.now() / 1000);
-  const cacheExpiresAtSec = Math.floor(new Date(cache.expiresAt).getTime() / 1000);
+  const nowSec = Math.floor(Date.now() / 1000);
+  if (nowSec > cache.verifiedAt + MAX_OFFLINE_SECONDS) return null;
 
-  // Se já expirou a validade da licença
-  if (now > cacheExpiresAtSec) {
-    clearSavedActivation();
-    return null;
-  }
-
-  // Se passou do tempo máximo permitido offline (24 horas desde a última verificação)
-  const offlineMax = cache.verifiedAt + MAX_OFFLINE_SECONDS;
-  if (now > offlineMax) {
-    return null;
-  }
-
-  const leaseExp = Math.min(cacheExpiresAtSec, offlineMax);
-
-  return {
-    restaurantName: cache.restaurantName || 'Comanda Pro',
-    expiresAt: cache.expiresAt,
-    leaseExpiresAt: new Date(leaseExp * 1000).toISOString(),
-    periodId: new Date(cache.expiresAt).toISOString().slice(0, 7),
-  };
+  return montarLicenca(cache.restaurantName, cache.verifiedAt);
 }
 
+/**
+ * Consulta o documento `licencas/{chave}` e libera o caixa somente se `ativa`
+ * for verdadeiro. Os campos `validade`/datas são ignorados de propósito.
+ */
 export async function checkLicenseOnline(key: string): Promise<LicenseInfo> {
   if (!hasLicenseBackendConfig || !firestoreDb) {
     throw new LicenseConfigurationError(
@@ -128,54 +139,16 @@ export async function checkLicenseOnline(key: string): Promise<LicenseInfo> {
     const docRef = doc(firestoreDb, 'licencas', normalizedKey);
     const docSnap = await getDoc(docRef);
 
-    if (!docSnap.exists()) {
-      throw new InvalidAccessKeyError('Chave de licença não encontrada ou não cadastrada.');
+    const veredito = avaliarLicenca(docSnap.exists() ? docSnap.data() : null);
+    if (!veredito.ok) {
+      throw new InvalidAccessKeyError(veredito.reason);
     }
 
-    const data = docSnap.data();
-
-    // Verificação de bloqueio
-    if (data.ativa === false || data.bloqueada === true) {
-      throw new InvalidAccessKeyError(
-        data.motivoBloqueio || 'Esta chave foi desativada ou bloqueada pela administração.'
-      );
-    }
-
-    // Validade
-    let expiresAtDate: Date;
-    if (data.validade instanceof Timestamp) {
-      expiresAtDate = data.validade.toDate();
-    } else if (typeof data.validade === 'string') {
-      expiresAtDate = new Date(data.validade);
-    } else if (typeof data.validade === 'number') {
-      expiresAtDate = new Date(data.validade);
-    } else {
-      // Padrão: 30 dias se não definido
-      expiresAtDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-    }
-
-    if (isNaN(expiresAtDate.getTime()) || Date.now() > expiresAtDate.getTime()) {
-      throw new InvalidAccessKeyError('Esta licença expirou. Renove sua assinatura para continuar.');
-    }
-
-    const expiresAt = expiresAtDate.toISOString();
     const nowSec = Math.floor(Date.now() / 1000);
-    const expiresAtSec = Math.floor(expiresAtDate.getTime() / 1000);
-    const leaseExp = Math.min(expiresAtSec, nowSec + MAX_OFFLINE_SECONDS);
-
-    const licenseInfo: LicenseInfo = {
-      restaurantName: data.cliente || data.nomeFantasia || 'Restaurante Licenciado',
-      expiresAt,
-      leaseExpiresAt: new Date(leaseExp * 1000).toISOString(),
-      periodId: expiresAt.slice(0, 7),
-    };
+    const licenseInfo = montarLicenca(veredito.restaurantName, nowSec);
 
     saveKey(normalizedKey);
-    saveCache({
-      restaurantName: licenseInfo.restaurantName,
-      expiresAt,
-      verifiedAt: nowSec,
-    });
+    saveCache({ restaurantName: veredito.restaurantName, verifiedAt: nowSec });
 
     return licenseInfo;
   } catch (error) {
@@ -184,7 +157,9 @@ export async function checkLicenseOnline(key: string): Promise<LicenseInfo> {
     }
     const err = error as { code?: string; message?: string };
     if (err?.code === 'permission-denied') {
-      throw new InvalidAccessKeyError('Acesso negado às regras do banco de dados.');
+      throw new InvalidAccessKeyError(
+        'Sem permissão de leitura no Firestore. Confirme as regras de acesso da coleção licencas.'
+      );
     }
     throw error;
   }
@@ -194,6 +169,11 @@ export async function activateWithKey(key: string): Promise<LicenseInfo> {
   return checkLicenseOnline(key);
 }
 
+/**
+ * Revalidação periódica. Retorna a licença atualizada, `null` quando o servidor
+ * respondeu que a chave não está mais ativa (bloqueio) e lança erro apenas em
+ * falha de rede/conexão (que cai na tolerância offline).
+ */
 export async function refreshSavedLicense(): Promise<LicenseInfo | null> {
   const savedKey = getSavedKey();
   if (!savedKey) return null;
@@ -205,7 +185,6 @@ export async function refreshSavedLicense(): Promise<LicenseInfo | null> {
       clearSavedActivation();
       return null;
     }
-    // Falha de rede: tenta usar o cache offline
     throw error;
   }
 }

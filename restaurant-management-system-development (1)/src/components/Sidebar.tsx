@@ -1,4 +1,5 @@
 import React from 'react';
+import { cn } from '../utils/cn';
 import {
   ShoppingCart,
   CreditCard,
@@ -11,7 +12,7 @@ import {
   ChefHat,
   Users,
   Sparkles,
-  Monitor,
+  Eye,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
@@ -21,9 +22,8 @@ export interface TabItem {
   label: string;
   sublabel: string;
   icon: React.ElementType;
+  group: 'Caixa' | 'Gestão';
   badge?: number | string;
-  badgeColor?: string;
-  color?: string;
 }
 
 interface SidebarProps {
@@ -33,7 +33,35 @@ interface SidebarProps {
   setCollapsed: (collapsed: boolean) => void;
   occupiedTablesCount: number;
   kitchenPendingCount: number;
+  /** Abas escondidas pelo "Modo Caixa" ou pela configuração de aparência. */
+  hiddenTabs?: number[];
+  onShowAllTabs?: () => void;
 }
+
+const BASE_TABS: TabItem[] = [
+  { id: 1, label: 'Frente de Caixa', sublabel: 'PDV & comandas', icon: ShoppingCart, group: 'Caixa' },
+  { id: 2, label: 'Pagamentos', sublabel: 'Checkout & PIX', icon: CreditCard, group: 'Caixa' },
+  { id: 3, label: 'Vendas & Fechamento', sublabel: 'Histórico e fechamento de caixa', icon: FileText, group: 'Caixa' },
+  { id: 11, label: 'Resumo do Caixa', sublabel: 'Visão rápida do dia', icon: Sparkles, group: 'Caixa' },
+  { id: 8, label: 'Mesas', sublabel: 'Salão, mesas 1 a 50', icon: LayoutGrid, group: 'Gestão' },
+  { id: 9, label: 'Cozinha & Delivery', sublabel: 'Kanban de produção', icon: ChefHat, group: 'Gestão' },
+  { id: 5, label: 'Estoque & Cardápio', sublabel: 'Produtos, setores e importação', icon: Package, group: 'Gestão' },
+  { id: 6, label: 'Financeiro', sublabel: 'Cartões & conciliação', icon: DollarSign, group: 'Gestão' },
+  { id: 7, label: 'Gráficos', sublabel: 'Dashboard de vendas', icon: BarChart3, group: 'Gestão' },
+  { id: 10, label: 'Cadastros', sublabel: 'Clientes, equipe e parceiros', icon: Users, group: 'Gestão' },
+  { id: 4, label: 'Configuração', sublabel: 'Empresa, taxas, cupom e tela do caixa', icon: Settings, group: 'Gestão' },
+];
+
+/** Rótulos das abas, reutilizados na tela de Configuração. */
+export const TAB_LABELS: Record<number, { label: string; sublabel: string }> = BASE_TABS.reduce(
+  (acc, tab) => {
+    acc[tab.id] = { label: tab.label, sublabel: tab.sublabel };
+    return acc;
+  },
+  {} as Record<number, { label: string; sublabel: string }>
+);
+
+const GROUPS: TabItem['group'][] = ['Caixa', 'Gestão'];
 
 export const Sidebar: React.FC<SidebarProps> = ({
   activeTab,
@@ -42,206 +70,118 @@ export const Sidebar: React.FC<SidebarProps> = ({
   setCollapsed,
   occupiedTablesCount,
   kitchenPendingCount,
+  hiddenTabs = [],
+  onShowAllTabs,
 }) => {
-  const tabs: TabItem[] = [
-    {
-      id: 1,
-      label: 'Frente de Caixa',
-      sublabel: 'PDV & Comandas',
-      icon: ShoppingCart,
-    },
-    {
-      id: 2,
-      label: 'Tela Pagamentos',
-      sublabel: 'Checkout & PIX',
-      icon: CreditCard,
-    },
-    {
-      id: 3,
-      label: 'Relatórios de Venda',
-      sublabel: 'Histórico & Fechamento',
-      icon: FileText,
-    },
-    {
-      id: 4,
-      label: 'Configuração',
-      sublabel: 'Empresa & BrasilAPI',
-      icon: Settings,
-    },
-    {
-      id: 5,
-      label: 'Estoques & Base',
-      sublabel: 'Import CSV & Cardápio',
-      icon: Package,
-    },
-    {
-      id: 6,
-      label: 'Financeiro',
-      sublabel: 'Cartões & Conciliação',
-      icon: DollarSign,
-    },
-    {
-      id: 7,
-      label: 'Gráficos (%)',
-      sublabel: 'Dashboard & Vendas',
-      icon: BarChart3,
-    },
-    {
-      id: 8,
-      label: 'Gestão de Mesas',
-      sublabel: 'Mesas 1 a 50 (Salão)',
-      icon: LayoutGrid,
-      badge: occupiedTablesCount > 0 ? occupiedTablesCount : undefined,
-      badgeColor: 'bg-rose-500 text-white',
-    },
-    {
-      id: 9,
-      label: 'Cozinha & Delivery',
-      sublabel: 'Kanban & Produção',
-      icon: ChefHat,
-      badge: kitchenPendingCount > 0 ? kitchenPendingCount : undefined,
-      badgeColor: 'bg-orange-500 text-white',
-    },
-    {
-      id: 10,
-      label: 'Cadastros',
-      sublabel: 'Clientes & Equipe',
-      icon: Users,
-    },
-    {
-      id: 12,
-      label: 'Tela Cliente',
-      sublabel: 'Comanda visual',
-      icon: Monitor,
-      color: 'text-amber-300',
-    },
-    {
-      id: 11,
-      label: 'Resumo Rápido',
-      sublabel: 'Caixa & Status',
-      icon: Sparkles,
-      color: 'text-amber-300',
-    },
-  ];
+  const tabs: TabItem[] = BASE_TABS.map((tab) => {
+    if (tab.id === 8) {
+      return { ...tab, badge: occupiedTablesCount > 0 ? occupiedTablesCount : undefined };
+    }
+    if (tab.id === 9) {
+      return { ...tab, badge: kitchenPendingCount > 0 ? kitchenPendingCount : undefined };
+    }
+    return tab;
+  });
+
+  const visibleTabs = tabs.filter((tab) => !hiddenTabs.includes(tab.id));
 
   return (
     <aside
-      className={`bg-zinc-950 text-zinc-300 border-r border-zinc-800 transition-all duration-200 ease-in-out flex flex-col select-none relative z-30 shrink-0 ${
-        collapsed ? 'w-16' : 'w-64'
+      className={`bg-zinc-950 text-zinc-300 border-r border-zinc-800/70 transition-[width] duration-150 ease-out flex flex-col select-none relative z-30 shrink-0 ${
+        collapsed ? 'w-14' : 'w-56'
       }`}
     >
-      {/* Sidebar Header toggle */}
-      <div className="flex items-center justify-between p-3 border-b border-zinc-800/80">
-        {!collapsed && (
-          <div className="flex items-center space-x-2 px-1">
-            <span className="text-[11px] font-bold tracking-wider text-zinc-400 uppercase">
-              Menu Principal
-            </span>
-          </div>
-        )}
+      {/* Alternar recolhido */}
+      <div className="flex items-center justify-end h-12 px-2 border-b border-zinc-800/70">
         <button
           onClick={() => setCollapsed(!collapsed)}
-          className={`p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition mx-auto ${
-            collapsed ? '' : 'ml-auto'
-          }`}
-          title={collapsed ? 'Expandir Menu' : 'Recolher Menu'}
+          className="p-1.5 rounded-md text-zinc-500 hover:text-zinc-100 hover:bg-zinc-900 transition"
+          title={collapsed ? 'Expandir menu' : 'Recolher menu'}
+          aria-label={collapsed ? 'Expandir menu' : 'Recolher menu'}
         >
-          {collapsed ? (
-            <ChevronRight className="w-4 h-4" />
-          ) : (
-            <ChevronLeft className="w-4 h-4" />
-          )}
+          {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
         </button>
       </div>
 
-      {/* Nav List */}
-      <nav className="flex-1 overflow-y-auto py-2 px-2 space-y-1">
-        {tabs.map((tab) => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
-
+      {/* Navegação */}
+      <nav className="flex-1 overflow-y-auto px-2 pb-2">
+        {GROUPS.map((group) => {
+          const groupTabs = visibleTabs.filter((tab) => tab.group === group);
+          if (groupTabs.length === 0) return null;
           return (
-            <button
-              key={tab.id}
-              onClick={() => onSelectTab(tab.id)}
-              title={collapsed ? `Aba ${tab.id}: ${tab.label}` : undefined}
-              className={`w-full group flex items-center rounded-lg transition-all duration-150 text-left relative ${
-                collapsed ? 'justify-center p-2.5' : 'px-3 py-2.5 space-x-3'
-              } ${
-                isActive
-                  ? 'bg-orange-600 text-white font-semibold shadow-md shadow-orange-950/40'
-                  : 'text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/80'
-              }`}
-            >
-              <div
-                className={`flex items-center justify-center shrink-0 ${
-                  isActive ? 'text-white' : 'text-zinc-400 group-hover:text-orange-400'
-                }`}
-              >
-                <Icon className="w-5 h-5" />
-              </div>
-
+            <div key={group} className="mt-3">
               {!collapsed && (
-                <div className="flex-1 min-w-0 pr-1">
-                  <div className="flex items-center justify-between">
-                    <span
-                      className={`text-xs truncate ${
-                        isActive ? 'text-white font-bold' : 'text-zinc-200'
-                      }`}
+                <p className="px-2 pb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-600">
+                  {group}
+                </p>
+              )}
+              <div className="space-y-0.5">
+                {groupTabs.map((tab) => {
+                  const Icon = tab.icon;
+                  const isActive = activeTab === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => onSelectTab(tab.id)}
+                      title={collapsed ? tab.label : tab.sublabel}
+                      aria-current={isActive ? 'page' : undefined}
+                      className={cn(
+                        'w-full group flex items-center rounded-lg transition-colors text-left relative',
+                        collapsed ? 'justify-center p-2' : 'gap-2.5 px-2 py-2',
+                        isActive
+                          ? 'bg-zinc-800/80 text-white'
+                          : 'text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900'
+                      )}
                     >
-                      <span className="text-zinc-400 font-mono mr-1.5 text-[10px]">
-                        #{tab.id}
-                      </span>
-                      {tab.label}
-                    </span>
-                    {tab.badge !== undefined && (
-                      <span
-                        className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full ${
-                          tab.badgeColor || 'bg-orange-500 text-white'
+                      {isActive && (
+                        <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-full bg-orange-500" />
+                      )}
+                      <Icon
+                        className={`w-4 h-4 shrink-0 ${
+                          isActive ? 'text-orange-400' : 'text-zinc-500 group-hover:text-zinc-300'
                         }`}
-                      >
-                        {tab.badge}
-                      </span>
-                    )}
-                  </div>
-                  <div
-                    className={`text-[10px] truncate ${
-                      isActive ? 'text-orange-100' : 'text-zinc-400'
-                    }`}
-                  >
-                    {tab.sublabel}
-                  </div>
-                </div>
-              )}
-
-              {/* Collapsed dot/badge indicator */}
-              {collapsed && tab.badge !== undefined && (
-                <span
-                  className={`absolute top-1 right-1 w-2.5 h-2.5 rounded-full ${
-                    tab.badgeColor?.split(' ')[0] || 'bg-orange-500'
-                  }`}
-                />
-              )}
-            </button>
+                      />
+                      {!collapsed && (
+                        <>
+                          <span className="text-[13px] truncate flex-1 font-medium">{tab.label}</span>
+                          {tab.badge !== undefined && (
+                            <span className="text-[10px] font-bold font-mono px-1.5 py-0.5 rounded-full bg-zinc-800 text-zinc-300 border border-zinc-700">
+                              {tab.badge}
+                            </span>
+                          )}
+                        </>
+                      )}
+                      {collapsed && tab.badge !== undefined && (
+                        <span className="absolute top-1 right-1.5 w-1.5 h-1.5 rounded-full bg-orange-500" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           );
         })}
       </nav>
 
-      {/* Quick Status Info in Footer of Sidebar */}
-      {!collapsed && (
-        <div className="p-3 bg-zinc-900/60 border-t border-zinc-800/80 text-[11px] text-zinc-400">
-          <div className="flex justify-between items-center mb-1">
-            <span className="text-zinc-400">Mesas 1 a 50:</span>
-            <span className="font-semibold text-zinc-300">
-              {occupiedTablesCount}/50 ativas
-            </span>
-          </div>
-          <div className="w-full bg-zinc-800 rounded-full h-1.5 overflow-hidden">
-            <div
-              className="bg-orange-500 h-1.5 rounded-full transition-all"
-              style={{ width: `${(occupiedTablesCount / 50) * 100}%` }}
-            />
-          </div>
+      {/* Rodapé: recupera telas escondidas, quando for o caso */}
+      {hiddenTabs.length > 0 && onShowAllTabs && (
+        <div className="p-2 border-t border-zinc-800/70">
+          <button
+            type="button"
+            onClick={onShowAllTabs}
+            title="Mostrar outra vez as telas escondidas do menu"
+            className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-300 text-[11px] font-semibold transition ${
+              collapsed ? 'justify-center' : ''
+            }`}
+          >
+            <Eye className="w-3.5 h-3.5 text-orange-400 shrink-0" />
+            {!collapsed && (
+              <span>
+                Mostrar {hiddenTabs.length} tela{hiddenTabs.length > 1 ? 's' : ''} escondida
+                {hiddenTabs.length > 1 ? 's' : ''}
+              </span>
+            )}
+          </button>
         </div>
       )}
     </aside>

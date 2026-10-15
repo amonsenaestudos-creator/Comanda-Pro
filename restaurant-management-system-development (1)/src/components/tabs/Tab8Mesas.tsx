@@ -77,7 +77,7 @@ export const Tab8Mesas: React.FC<Tab8MesasProps> = ({
   return (
     <div className="space-y-4">
       {/* Top Banner */}
-      <div className="bg-white rounded-xl shadow-xs border border-zinc-200 p-4">
+      <div className="cp-card p-4">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div>
             <h2 className="text-base font-extrabold text-zinc-900 flex items-center gap-2">
@@ -96,17 +96,17 @@ export const Tab8Mesas: React.FC<Tab8MesasProps> = ({
               <span>Livres: {freeCount}</span>
             </div>
 
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-50 border border-rose-200 text-xs font-bold text-rose-800">
-              <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse"></span>
+      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-50 border border-rose-200 text-xs font-bold text-rose-800">
+              <span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
               <span>Ocupadas: {occupiedCount}</span>
             </div>
 
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 border border-amber-200 text-xs font-bold text-amber-800">
+      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 border border-amber-200 text-xs font-bold text-amber-800">
               <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
               <span>Conta Solicitada: {requestedCount}</span>
             </div>
 
-            <div className="px-3 py-1.5 rounded-lg bg-zinc-900 text-orange-400 font-mono text-xs font-bold border border-zinc-800">
+      <div className="px-3 py-1.5 rounded-lg bg-zinc-900 text-orange-400 font-mono text-xs font-bold border border-zinc-800">
               Consumo Salão: {formatCurrency(totalSaloonRevenue)}
             </div>
           </div>
@@ -139,7 +139,7 @@ export const Tab8Mesas: React.FC<Tab8MesasProps> = ({
       </div>
 
       {/* Filter and Status Toolbar */}
-      <div className="bg-white rounded-xl shadow-xs border border-zinc-200 p-4">
+      <div className="cp-card p-4">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
           {/* Status Buttons */}
           <div className="flex flex-wrap gap-1.5 w-full sm:w-auto">
@@ -147,7 +147,7 @@ export const Tab8Mesas: React.FC<Tab8MesasProps> = ({
               onClick={() => setFilterStatus('todos')}
               className={`px-3 py-1.5 text-xs font-bold rounded-lg transition ${
                 filterStatus === 'todos'
-                  ? 'bg-zinc-900 text-white shadow-xs'
+                  ? 'bg-zinc-900 text-white '
                   : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200'
               }`}
             >
@@ -157,7 +157,7 @@ export const Tab8Mesas: React.FC<Tab8MesasProps> = ({
               onClick={() => setFilterStatus('livre')}
               className={`px-3 py-1.5 text-xs font-bold rounded-lg transition flex items-center gap-1.5 ${
                 filterStatus === 'livre'
-                  ? 'bg-emerald-600 text-white shadow-xs'
+                  ? 'bg-emerald-600 text-white '
                   : 'bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100'
               }`}
             >
@@ -168,7 +168,7 @@ export const Tab8Mesas: React.FC<Tab8MesasProps> = ({
               onClick={() => setFilterStatus('ocupada')}
               className={`px-3 py-1.5 text-xs font-bold rounded-lg transition flex items-center gap-1.5 ${
                 filterStatus === 'ocupada'
-                  ? 'bg-rose-600 text-white shadow-xs'
+                  ? 'bg-rose-600 text-white '
                   : 'bg-rose-50 text-rose-800 border border-rose-200 hover:bg-rose-100'
               }`}
             >
@@ -179,7 +179,7 @@ export const Tab8Mesas: React.FC<Tab8MesasProps> = ({
               onClick={() => setFilterStatus('conta_solicitada')}
               className={`px-3 py-1.5 text-xs font-bold rounded-lg transition flex items-center gap-1.5 ${
                 filterStatus === 'conta_solicitada'
-                  ? 'bg-amber-500 text-zinc-950 shadow-xs'
+                  ? 'bg-amber-500 text-zinc-950 '
                   : 'bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100'
               }`}
             >
@@ -235,7 +235,7 @@ export const Tab8Mesas: React.FC<Tab8MesasProps> = ({
             <div
               key={table.numero}
               onClick={() => handleOpenDetail(table)}
-              className={`bg-white rounded-xl border-2 ${borderColor} shadow-xs hover:shadow-md cursor-pointer transition-all duration-150 flex flex-col justify-between overflow-hidden group`}
+              className={`bg-white rounded-xl border-2 ${borderColor} cursor-pointer transition-all duration-150 flex flex-col justify-between overflow-hidden group`}
             >
               {/* Card Top */}
               <div className={`px-2.5 py-1.5 flex items-center justify-between font-extrabold ${bgHeader}`}>
@@ -285,7 +285,7 @@ export const Tab8Mesas: React.FC<Tab8MesasProps> = ({
       {/* Mesa Consumption Modal (Destaque ao clicar nas mesas para ver descrição do consumo) */}
       {selectedTableDetail && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full p-5 border border-zinc-200 animate-in zoom-in-95">
+          <div className="cp-card shadow-2xl max-w-lg w-full p-5 animate-in zoom-in-95">
             {/* Modal Header */}
             <div className="flex items-center justify-between pb-3 border-b border-zinc-200">
               <div className="flex items-center space-x-2">
@@ -428,7 +428,7 @@ export const Tab8Mesas: React.FC<Tab8MesasProps> = ({
               </div>
             </div>
 
-            {/* Main Action Buttons: Verde (Atender/Lançar), Azul (Imprimir Pré-Conta), Verde (Fechar e Pagar), Vermelho (Liberar Mesa) */}
+      {/* Main Action Buttons: Verde (Atender/Lançar), Azul (Imprimir Pré-Conta), Verde (Fechar e Pagar), Vermelho (Liberar Mesa) */}
             <div className="mt-4 pt-3 border-t border-zinc-200 grid grid-cols-2 sm:grid-cols-4 gap-2">
               {/* Verde: Lançar Itens no PDV */}
               <button
@@ -436,7 +436,7 @@ export const Tab8Mesas: React.FC<Tab8MesasProps> = ({
                   onSelectTableForPdv(selectedTableDetail.numero);
                   setSelectedTableDetail(null);
                 }}
-                className="py-2 px-2 text-xs font-bold rounded-lg bg-orange-600 hover:bg-orange-700 text-white flex items-center justify-center gap-1 shadow-xs transition"
+                className="py-2 px-2 text-xs font-bold rounded-lg bg-orange-600 hover:bg-orange-700 text-white flex items-center justify-center gap-1 transition"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>+ Lançar PDV</span>
@@ -448,7 +448,7 @@ export const Tab8Mesas: React.FC<Tab8MesasProps> = ({
                   onPrintTableTicket(selectedTableDetail.numero, selectedTableDetail.itens);
                 }}
                 disabled={selectedTableDetail.itens.length === 0}
-                className="py-2 px-2 text-xs font-bold rounded-lg bg-sky-600 hover:bg-sky-700 text-white disabled:opacity-50 flex items-center justify-center gap-1 shadow-xs transition"
+                className="py-2 px-2 text-xs font-bold rounded-lg bg-sky-600 hover:bg-sky-700 text-white disabled:opacity-50 flex items-center justify-center gap-1 transition"
               >
                 <Printer className="w-3.5 h-3.5" />
                 <span>Imprimir Mesa</span>
@@ -461,7 +461,7 @@ export const Tab8Mesas: React.FC<Tab8MesasProps> = ({
                   setSelectedTableDetail(null);
                 }}
                 disabled={selectedTableDetail.itens.length === 0}
-                className="py-2 px-2 text-xs font-bold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50 flex items-center justify-center gap-1 shadow-xs transition"
+                className="py-2 px-2 text-xs font-bold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50 flex items-center justify-center gap-1 transition"
               >
                 <CreditCard className="w-3.5 h-3.5" />
                 <span>Fechar / Pagar</span>
@@ -475,7 +475,7 @@ export const Tab8Mesas: React.FC<Tab8MesasProps> = ({
                     setSelectedTableDetail(null);
                   }
                 }}
-                className="py-2 px-2 text-xs font-bold rounded-lg bg-rose-600 hover:bg-rose-700 text-white flex items-center justify-center gap-1 shadow-xs transition"
+                className="py-2 px-2 text-xs font-bold rounded-lg bg-rose-600 hover:bg-rose-700 text-white flex items-center justify-center gap-1 transition"
               >
                 <X className="w-3.5 h-3.5" />
                 <span>Liberar Mesa</span>

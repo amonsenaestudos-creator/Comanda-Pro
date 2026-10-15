@@ -129,7 +129,7 @@ export const Tab6Financeiro: React.FC<Tab6FinanceiroProps> = ({
   return (
     <div className="space-y-4">
       {/* Top Banner */}
-      <div className="bg-white rounded-xl shadow-xs border border-zinc-200 p-4">
+      <div className="cp-card p-4">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div>
             <h2 className="text-base font-extrabold text-zinc-900 flex items-center gap-2">
@@ -146,9 +146,7 @@ export const Tab6Financeiro: React.FC<Tab6FinanceiroProps> = ({
               <button
                 onClick={() => setFilterPeriod('hoje')}
                 className={`px-3 py-1 rounded-md transition ${
-                  filterPeriod === 'hoje'
-                    ? 'bg-white shadow-xs text-orange-600 font-bold'
-                    : 'text-zinc-600'
+                  filterPeriod === 'hoje' ? 'bg-white text-orange-600 font-bold' : 'text-zinc-600'
                 }`}
               >
                 Hoje
@@ -156,9 +154,7 @@ export const Tab6Financeiro: React.FC<Tab6FinanceiroProps> = ({
               <button
                 onClick={() => setFilterPeriod('todos')}
                 className={`px-3 py-1 rounded-md transition ${
-                  filterPeriod === 'todos'
-                    ? 'bg-white shadow-xs text-orange-600 font-bold'
-                    : 'text-zinc-600'
+                  filterPeriod === 'todos' ? 'bg-white text-orange-600 font-bold' : 'text-zinc-600'
                 }`}
               >
                 Todo Histórico
@@ -168,7 +164,7 @@ export const Tab6Financeiro: React.FC<Tab6FinanceiroProps> = ({
             {/* Botão Azul: Exportação Conciliação Bancária .CSV */}
             <button
               onClick={handleExportReconciliationCsv}
-              className="px-4 py-2 text-xs font-bold rounded-lg bg-sky-600 hover:bg-sky-700 text-white flex items-center gap-1.5 shadow-xs transition"
+              className="px-4 py-2 text-xs font-bold rounded-lg bg-sky-600 hover:bg-sky-700 text-white flex items-center gap-1.5 transition"
             >
               <FileSpreadsheet className="w-4 h-4" />
               <span>Exportar Conciliação (.CSV)</span>
@@ -203,7 +199,7 @@ export const Tab6Financeiro: React.FC<Tab6FinanceiroProps> = ({
       </div>
 
       {exportFeedback && (
-        <div className="bg-emerald-50 border border-emerald-300 text-emerald-800 px-4 py-3 rounded-xl flex items-center gap-2 text-xs font-bold animate-in fade-in">
+        <div className="bg-emerald-50 border border-emerald-300 text-emerald-800 px-4 py-3 rounded-xl flex items-center gap-2 text-xs font-bold">
           <CheckCircle className="w-4 h-4 text-emerald-600" />
           <span>Arquivo de conciliação bancária (.csv) gerado e baixado com sucesso!</span>
         </div>
@@ -211,7 +207,7 @@ export const Tab6Financeiro: React.FC<Tab6FinanceiroProps> = ({
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div className="bg-white p-4 rounded-xl border border-zinc-200 shadow-2xs">
+        <div className="cp-card p-4">
           <div className="flex items-center justify-between text-xs text-zinc-500 mb-1">
             <span className="font-semibold uppercase">Total Bruto Processado</span>
             <CreditCard className="w-4 h-4 text-zinc-400" />
@@ -224,7 +220,7 @@ export const Tab6Financeiro: React.FC<Tab6FinanceiroProps> = ({
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-xl border border-rose-200 bg-rose-50/20 shadow-2xs">
+        <div className="cp-card p-4 border-rose-200">
           <div className="flex items-center justify-between text-xs text-rose-700 mb-1">
             <span className="font-semibold uppercase">Comissões a Pagar Operadoras</span>
             <Percent className="w-4 h-4 text-rose-600" />
@@ -237,7 +233,7 @@ export const Tab6Financeiro: React.FC<Tab6FinanceiroProps> = ({
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-xl border border-emerald-200 bg-emerald-50/20 shadow-2xs">
+        <div className="cp-card p-4 border-emerald-200">
           <div className="flex items-center justify-between text-xs text-emerald-700 mb-1">
             <span className="font-bold uppercase">Líquido a Receber / Conta</span>
             <Building className="w-4 h-4 text-emerald-600" />
@@ -252,7 +248,7 @@ export const Tab6Financeiro: React.FC<Tab6FinanceiroProps> = ({
       </div>
 
       {/* Accounts Receivable Table by Payment Method */}
-      <div className="bg-white rounded-xl shadow-xs border border-zinc-200 overflow-hidden">
+      <div className="cp-card overflow-hidden">
         <div className="px-4 py-3 bg-zinc-50 border-b border-zinc-200 flex justify-between items-center">
           <span className="font-bold text-xs text-zinc-700 uppercase tracking-wide">
             Contas a Receber & Comissões por Meio de Pagamento
@@ -322,7 +318,7 @@ export const Tab6Financeiro: React.FC<Tab6FinanceiroProps> = ({
       </div>
 
       {/* Transaction History for Auditing */}
-      <div className="bg-white rounded-xl shadow-xs border border-zinc-200 p-4">
+      <div className="cp-card p-4">
         <h4 className="font-bold text-xs text-zinc-800 uppercase tracking-wide mb-3">
           Demonstrativo Individual de Vendas com Desconto de Taxas
         </h4>

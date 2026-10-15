@@ -1,10 +1,231 @@
 @import "tailwindcss";
 
+/* ==========================================================================
+   COMANDA PRO — camada de aparência (tema, tamanho de letra e densidade)
+   Tudo é controlado por variáveis CSS no elemento raiz do app (.cp-theme),
+   assim o caixa pode trocar tema / letra / compacto sem recarregar nada.
+   ========================================================================== */
+
+:root {
+  /* Escala de letra (padrao = 1) */
+  --cp-fs: 1;
+  /* Ritmo visual */
+  --cp-pad: 1rem;
+  --cp-gap: 0.75rem;
+  --cp-row: 2.6rem;
+  --cp-radius: 0.75rem;
+  --cp-tile-cols: 2;
+
+  /* Paleta clara */
+  --cp-bg: #f3f4f6;
+  --cp-surface: #ffffff;
+  --cp-surface-2: #fafafa;
+  --cp-surface-3: #f4f4f5;
+  --cp-border: #e4e4e7;
+  --cp-border-strong: #d4d4d8;
+  --cp-text: #18181b;
+  --cp-muted: #52525b;
+  --cp-faint: #a1a1aa;
+  --cp-accent: #ea580c;
+  --cp-shadow: none;
+}
+
+/* Tema escuro ------------------------------------------------------------- */
+.cp-dark {
+  --cp-bg: #0b0b0e;
+  --cp-surface: #16161a;
+  --cp-surface-2: #1d1d22;
+  --cp-surface-3: #24242a;
+  --cp-border: #2e2e35;
+  --cp-border-strong: #3f3f46;
+  --cp-text: #f4f4f5;
+  --cp-muted: #b9b9c2;
+  --cp-faint: #8b8b95;
+  --cp-accent: #fb923c;
+  --cp-shadow: none;
+  color-scheme: dark;
+}
+
+/* Escala de letra para o operador ---------------------------------------- */
+.cp-fs-grande {
+  --cp-fs: 1.15;
+}
+.cp-fs-extra {
+  --cp-fs: 1.32;
+}
+
+/* Densidade compacta (cabe mais coisa na tela) ---------------------------- */
+.cp-compacta {
+  --cp-pad: 0.6rem;
+  --cp-gap: 0.5rem;
+  --cp-row: 2rem;
+  --cp-radius: 0.65rem;
+}
+
+@layer components {
+  /* Elemento raiz do app: aplica cor de fundo/texto do tema ativo */
+  .cp-theme {
+    color: var(--cp-text);
+    background-color: var(--cp-bg);
+  }
+
+  /* Painel padrão (substitui bg-white + border-zinc-200 + rounded-xl) */
+  .cp-card {
+    background-color: var(--cp-surface);
+    border: 1px solid var(--cp-border);
+    border-radius: var(--cp-radius);
+    box-shadow: var(--cp-shadow);
+  }
+
+  .cp-inset {
+    background-color: var(--cp-surface-2);
+    border: 1px solid var(--cp-border);
+  }
+
+  .cp-soft {
+    background-color: var(--cp-surface-3);
+  }
+
+  .cp-line {
+    border-color: var(--cp-border);
+  }
+
+  .cp-text {
+    color: var(--cp-text);
+  }
+  .cp-muted {
+    color: var(--cp-muted);
+  }
+  .cp-faint {
+    color: var(--cp-faint);
+  }
+  .cp-accent {
+    color: var(--cp-accent);
+  }
+
+  /* Campo de formulário padrão do caixa */
+  .cp-input {
+    background-color: var(--cp-surface);
+    border: 1px solid var(--cp-border-strong);
+    color: var(--cp-text);
+    border-radius: 0.6rem;
+  }
+  .cp-input::placeholder {
+    color: var(--cp-faint);
+  }
+  .cp-input:focus {
+    outline: none;
+    border-color: var(--cp-accent);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--cp-accent) 35%, transparent);
+  }
+
+  /* Chip (categorias, mesas, quantidade rápida) */
+  .cp-chip {
+    background-color: var(--cp-surface-3);
+    border: 1px solid var(--cp-border);
+    color: var(--cp-muted);
+    border-radius: 999px;
+    font-weight: 600;
+    transition: background-color 0.15s ease, color 0.15s ease;
+  }
+  .cp-chip:hover {
+    background-color: var(--cp-border);
+    color: var(--cp-text);
+  }
+  .cp-chip-on {
+    background-color: #ea580c;
+    border-color: #ea580c;
+    color: #fff;
+  }
+  .cp-chip-on:hover {
+    background-color: #c2410c;
+    color: #fff;
+  }
+  .cp-dark .cp-chip-on {
+    background-color: #f97316;
+    border-color: #f97316;
+    color: #0b0b0e;
+  }
+  .cp-dark .cp-chip-on:hover {
+    background-color: #fb923c;
+    color: #0b0b0e;
+  }
+
+  /* Linha da comanda */
+  .cp-row {
+    min-height: var(--cp-row);
+    border-bottom: 1px solid var(--cp-border);
+  }
+
+  /* Tile do cardápio */
+  .cp-tile {
+    background-color: var(--cp-surface-2);
+    border: 1px solid var(--cp-border);
+    border-radius: 0.7rem;
+    padding: calc(0.6rem * var(--cp-fs)) 0.7rem;
+    transition: border-color 0.15s ease, background-color 0.15s ease, transform 0.08s ease;
+  }
+  .cp-tile:hover {
+    border-color: var(--cp-accent);
+    background-color: color-mix(in srgb, var(--cp-accent) 8%, var(--cp-surface-2));
+  }
+  .cp-tile:active {
+    transform: scale(0.985);
+  }
+
+  /* Números e textos importantes: crescem com a escala de letra escolhida */
+  .cp-total {
+    font-size: calc(2.4rem * var(--cp-fs));
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+  }
+  .cp-num {
+    font-size: calc(0.95rem * var(--cp-fs));
+  }
+  .cp-price {
+    font-size: calc(1.05rem * var(--cp-fs));
+  }
+  .cp-item {
+    font-size: calc(0.82rem * var(--cp-fs));
+  }
+  .cp-small {
+    font-size: calc(0.68rem * var(--cp-fs));
+  }
+  .cp-label {
+    font-size: calc(0.72rem * var(--cp-fs));
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  /* Botão de ação grande (alvo de dedo/toque) */
+  .cp-btn {
+    border-radius: 0.75rem;
+    font-weight: 800;
+    padding: calc(0.7rem + 0.1rem * var(--cp-fs)) 0.75rem;
+    font-size: calc(0.85rem * var(--cp-fs));
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    transition: filter 0.15s ease, transform 0.08s ease, opacity 0.15s ease;
+  }
+  .cp-btn:hover:not(:disabled) {
+    filter: brightness(1.08);
+  }
+  .cp-btn:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+  .cp-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+}
+
 @layer base {
   body {
     font-family: 'Inter', 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-    color: #18181b;
-    background-color: #f3f4f6;
+    color: var(--cp-text, #18181b);
+    background-color: var(--cp-bg, #f3f4f6);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
@@ -14,29 +235,141 @@
   }
 }
 
-@layer utilities {
-  .card-glass {
-    background: rgba(255, 255, 255, 0.92);
-    backdrop-filter: blur(10px) saturate(140%);
-    -webkit-backdrop-filter: blur(10px) saturate(140%);
-    border: 1px solid rgba(255,255,255,0.35);
-  }
+/* ==========================================================================
+   Tema escuro nas telas antigas (que ainda usam bg-white / text-zinc-*)
+   Regras FORA das camadas -> têm prioridade sobre as utilitárias do Tailwind.
+   ========================================================================== */
+.cp-dark .bg-white {
+  background-color: var(--cp-surface);
+}
+.cp-dark .bg-zinc-50,
+.cp-dark .bg-zinc-50\/70,
+.cp-dark .bg-zinc-50\/60,
+.cp-dark .bg-zinc-50\/50 {
+  background-color: var(--cp-surface-2);
+}
+.cp-dark .bg-zinc-100,
+.cp-dark .bg-zinc-200\/60 {
+  background-color: var(--cp-surface-3);
+}
+.cp-dark .bg-zinc-200,
+.cp-dark .bg-zinc-300 {
+  background-color: var(--cp-border-strong);
+}
+.cp-dark .hover\:bg-zinc-100:hover,
+.cp-dark .hover\:bg-zinc-200:hover,
+.cp-dark .hover\:bg-zinc-200\/70:hover {
+  background-color: var(--cp-surface-3);
+}
+.cp-dark .hover\:bg-orange-50\/40:hover,
+.cp-dark .hover\:bg-orange-50\/30:hover {
+  background-color: color-mix(in srgb, var(--cp-accent) 14%, var(--cp-surface));
+}
+.cp-dark .hover\:bg-rose-100:hover {
+  background-color: rgba(244, 63, 94, 0.18);
+}
+.cp-dark .border-zinc-200,
+.cp-dark .border-zinc-300,
+.cp-dark .border-zinc-100,
+.cp-dark .divide-zinc-100 > * + *,
+.cp-dark .divide-y > * + * {
+  border-color: var(--cp-border);
+}
+.cp-dark .text-zinc-900,
+.cp-dark .text-zinc-800 {
+  color: var(--cp-text);
+}
+.cp-dark .text-zinc-700,
+.cp-dark .text-zinc-600,
+.cp-dark .text-zinc-500 {
+  color: var(--cp-muted);
+}
+.cp-dark .text-zinc-400,
+.cp-dark .text-zinc-300 {
+  color: var(--cp-faint);
+}
+.cp-dark .bg-emerald-50 {
+  background-color: rgba(16, 185, 129, 0.12);
+}
+.cp-dark .bg-rose-50 {
+  background-color: rgba(244, 63, 94, 0.12);
+}
+.cp-dark .bg-amber-50,
+.cp-dark .bg-amber-50\/60 {
+  background-color: rgba(245, 158, 11, 0.12);
+}
+.cp-dark .bg-orange-50\/30,
+.cp-dark .bg-orange-100 {
+  background-color: rgba(249, 115, 22, 0.16);
+}
+.cp-dark .bg-teal-50 {
+  background-color: rgba(20, 184, 166, 0.12);
+}
+.cp-dark .bg-sky-50 {
+  background-color: rgba(14, 165, 233, 0.12);
+}
+/* O cupom simulado é papel: continua branco e legível mesmo no tema escuro */
+.cp-dark .printable-area {
+  background-color: #ffffff;
+  color: #0c0c0e;
+}
+.cp-dark .printable-area .bg-white {
+  background-color: #ffffff;
+}
+.cp-dark .printable-area .bg-zinc-50 {
+  background-color: #fafafa;
+}
+.cp-dark .printable-area .bg-zinc-100 {
+  background-color: #f4f4f5;
+}
+.cp-dark .printable-area .bg-zinc-200 {
+  background-color: #e4e4e7;
+}
+.cp-dark .printable-area .text-zinc-400,
+.cp-dark .printable-area .text-zinc-500,
+.cp-dark .printable-area .text-zinc-600,
+.cp-dark .printable-area .text-zinc-700 {
+  color: #52525b;
+}
+.cp-dark .printable-area .text-zinc-800,
+.cp-dark .printable-area .text-zinc-900 {
+  color: #18181b;
+}
+.cp-dark .printable-area .border-zinc-100,
+.cp-dark .printable-area .border-zinc-200,
+.cp-dark .printable-area .border-zinc-300 {
+  border-color: #d4d4d8;
 }
 
-/* Custom scrollbars */
+.cp-dark select option {
+  background-color: #16161a;
+  color: #f4f4f5;
+}
+.cp-dark input[type='number']::-webkit-outer-spin-button,
+.cp-dark input[type='number']::-webkit-inner-spin-button {
+  opacity: 0.4;
+}
+
+/* Scrollbars discretas e coerentes com o tema */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: color-mix(in srgb, var(--cp-faint, #94a3b8) 55%, transparent);
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: var(--cp-faint, #94a3b8);
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  scrollbar-width: none;
 }
 
 /* Thermal printer print media rules */
@@ -44,8 +377,11 @@
   body * {
     visibility: hidden;
   }
-  .printable-area, .printable-area * {
+  .printable-area,
+  .printable-area * {
     visibility: visible;
+    background: #fff !important;
+    color: #000 !important;
   }
   .printable-area {
     position: absolute;
@@ -54,8 +390,6 @@
     width: 80mm;
     margin: 0;
     padding: 2mm;
-    background: #fff;
-    color: #000;
     font-family: 'JetBrains Mono', monospace, monospace;
     font-size: 11px;
     line-height: 1.3;

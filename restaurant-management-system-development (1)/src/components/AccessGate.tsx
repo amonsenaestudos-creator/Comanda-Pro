@@ -51,7 +51,7 @@ export function AccessGate({ status, message, onActivate }: AccessGateProps) {
 
       <section className="relative w-full max-w-lg">
         <div className="mb-7 flex items-center justify-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-600 shadow-lg shadow-orange-950/40">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-600">
             <UtensilsCrossed className="h-6 w-6 text-white" aria-hidden="true" />
           </div>
           <div>
@@ -113,26 +113,27 @@ export function AccessGate({ status, message, onActivate }: AccessGateProps) {
             ) : (
               <>
                 <p className="text-sm leading-6 text-zinc-300">
-                  Digite a chave mensal enviada pela Conta Bahia para liberar o sistema neste caixa.
+                  Digite a chave enviada pela Conta Bahia. O caixa funciona enquanto o campo
+                  <code>ativa</code> da licença for verdadeiro.
                 </p>
 
-                <div className="mt-5 flex items-start gap-3 rounded-2xl border border-emerald-500/20 bg-emerald-500/[0.07] p-3.5">
+        <div className="mt-5 flex items-start gap-3 rounded-2xl border border-emerald-500/20 bg-emerald-500/[0.07] p-3.5">
                   <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-emerald-400" aria-hidden="true" />
                   <p className="text-xs leading-5 text-emerald-100/80">
-                    A chave é conferida diretamente no servidor e não é persistida no navegador;
-                    após a ativação, o caixa guarda somente uma credencial temporária e assinada.
+                    A chave é conferida no Firestore a cada 2 minutos. Se o <code>ativa</code>
+                    for marcado como false no Firebase Console, este caixa é bloqueado em seguida.
                   </p>
                 </div>
 
                 <form className="mt-6" onSubmit={handleSubmit}>
-                  <label htmlFor="monthly-access-key" className="mb-2 block text-sm font-bold text-zinc-100">
-                    Chave de acesso mensal
+                  <label htmlFor="access-key" className="mb-2 block text-sm font-bold text-zinc-100">
+                    Chave de acesso
                   </label>
                   <div className="relative">
                     <KeyRound className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-500" aria-hidden="true" />
                     <input
-                      id="monthly-access-key"
-                      name="monthly-access-key"
+                      id="access-key"
+                      name="access-key"
                       type="text"
                       autoComplete="off"
                       autoCapitalize="characters"
@@ -165,7 +166,7 @@ export function AccessGate({ status, message, onActivate }: AccessGateProps) {
                   <button
                     type="submit"
                     disabled={submitting || !key.trim() || !isReadyToActivate}
-                    className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-orange-600 px-4 text-sm font-extrabold text-white shadow-lg shadow-orange-950/25 transition hover:bg-orange-500 focus:outline-none focus:ring-4 focus:ring-orange-500/30 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400 disabled:shadow-none"
+                    className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-orange-600 px-4 text-sm font-extrabold text-white transition hover:bg-orange-500 focus:outline-none focus:ring-4 focus:ring-orange-500/30 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400 disabled:shadow-none"
                   >
                     {submitting ? (
                       <>
@@ -202,9 +203,9 @@ export function AccessGate({ status, message, onActivate }: AccessGateProps) {
             )}
           </div>
 
-          <div className="flex items-center justify-center gap-2 border-t border-zinc-800 bg-zinc-950/50 px-5 py-3 text-[11px] font-medium text-zinc-500">
+     <div className="flex items-center justify-center gap-2 border-t border-zinc-800 bg-zinc-950/50 px-5 py-3 text-[11px] font-medium text-zinc-500">
             <ShieldCheck className="h-3.5 w-3.5 text-zinc-600" aria-hidden="true" />
-            A licença é renovada mensalmente e verificada pela Conta Bahia
+            Quem liga e desliga o caixa é o campo ativa da licença, controlado pela Conta Bahia
           </div>
         </div>
 

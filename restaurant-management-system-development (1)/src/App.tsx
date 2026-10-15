@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import {
   AppConfig,
   AppIntegration,
+  CaixaAppearance,
   Customer,
   Deliverer,
   Employee,
@@ -26,6 +27,9 @@ import {
   createInitialSales,
   createInitialTables,
   getStored,
+  normalizeConfig,
+  resolveAppearance,
+  resolveHiddenTabs,
   setStored,
 } from './utils/storage';
 import { Header } from './components/Header';
@@ -47,7 +51,6 @@ import { Tab8Mesas } from './components/tabs/Tab8Mesas';
 import { Tab9CozinhaDelivery } from './components/tabs/Tab9CozinhaDelivery';
 import { Tab10Cadastros } from './components/tabs/Tab10Cadastros';
 import { Tab11ResumoRapido } from './components/tabs/Tab11ResumoRapido';
-import { Tab12Cliente } from './components/tabs/Tab12Cliente';
 
 export function App() {
   const accessLicense = useAccessLicense();
@@ -57,8 +60,50 @@ export function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
 
   const [config, setConfig] = useState<AppConfig>(() =>
-    getStored<AppConfig>(STORAGE_KEYS.CONFIG, DEFAULT_CONFIG)
+    normalizeConfig(getStored<Partial<AppConfig>>(STORAGE_KEYS.CONFIG, DEFAULT_CONFIG))
   );
+
+  const aparencia = resolveAppearance(config.aparencia);
+  const hiddenTabs = useMemo(
+    () => resolveHiddenTabs(config.aparencia),
+    [config.aparencia]
+  );
+
+  const handleUpdateAppearance = (patch: Partial<CaixaAppearance>) => {
+    setConfig((prev) => ({
+      ...prev,
+      aparencia: { ...resolveAppearance(prev.aparencia), ...patch },
+    }));
+  };
+
+  // Quando o conjunto de abas escondidas MUDA (ex: ligou o Modo Caixa), sai da aba
+  // que deixou de existir no menu. Navegar manualmente para uma aba escondida
+  // (atalhos do topo) continua permitido. Configuração (4) fica aberta de propósito,
+  // para o usuário conseguir desligar o modo.
+  const previousHiddenRef = useRef<string>(hiddenTabs.join(','));
+  useEffect(() => {
+    const key = hiddenTabs.join(',');
+    const changed = key !== previousHiddenRef.current;
+    previousHiddenRef.current = key;
+    if (changed && hiddenTabs.includes(activeTab) && activeTab !== 4) {
+      setActiveTab(1);
+    }
+  }, [hiddenTabs, activeTab]);
+
+  // Aplica o tema também no <html>, para fundo, barra de rolagem e color-scheme.
+  useEffect(() => {
+    const root = document.documentElement;
+    const themeClasses = ['cp-dark', 'cp-fs-grande', 'cp-fs-extra', 'cp-compacta'];
+    root.classList.remove(...themeClasses);
+    if (aparencia.tema === 'escuro') root.classList.add('cp-dark');
+    if (aparencia.escalaFonte === 'grande') root.classList.add('cp-fs-grande');
+    if (aparencia.escalaFonte === 'extra') root.classList.add('cp-fs-extra');
+    if (aparencia.densidade === 'compacta') root.classList.add('cp-compacta');
+  }, [
+    aparencia.tema,
+    aparencia.escalaFonte,
+    aparencia.densidade,
+  ]);
 
   const [products, setProducts] = useState<Product[]>(() =>
     getStored<Product[]>(STORAGE_KEYS.PRODUCTS, INITIAL_PRODUCTS)
@@ -161,9 +206,6 @@ export function App() {
       } else if (e.key === 'F11') {
         e.preventDefault();
         setActiveTab(11);
-      } else if (e.key === 'F12') {
-        e.preventDefault();
-        setActiveTab(12);
       } else if (e.key === 'Escape') {
         if (printModalState.isOpen) {
           setPrintModalState((prev) => ({ ...prev, isOpen: false }));
@@ -357,14 +399,22 @@ export function App() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-100 flex flex-col text-zinc-900 antialiased selection:bg-orange-500 selection:text-white">
+    <div
+   className={`min-h-screen flex flex-col antialiased selection:bg-orange-500 selection:text-white cp-theme ${
+    aparencia.tema === 'escuro' ? 'cp-dark' : ''
+   } ${
+    aparencia.escalaFonte === 'grande'
+     ? 'cp-fs-grande'
+     : aparencia.escalaFonte === 'extra'
+     ? 'cp-fs-extra'
+     : ''
+   } ${aparencia.densidade === 'compacta' ? 'cp-compacta' : ''}`}
+    >
       {/* Top Header Bar */}
       <Header
         config={config}
         tables={tables}
-        onNavigateTab={(tabId) => setActiveTab(tabId)}
-        activeTab={activeTab}
-        licenseExpiresAt={accessLicense.license.expiresAt}
+        licenseVerifiedAt={accessLicense.license.verifiedAt}
         licenseOffline={accessLicense.offline}
       />
 
@@ -378,11 +428,15 @@ export function App() {
           setCollapsed={setSidebarCollapsed}
           occupiedTablesCount={occupiedTablesCount}
           kitchenPendingCount={kitchenPendingCount}
+          hiddenTabs={hiddenTabs}
+          onShowAllTabs={() =>
+            handleUpdateAppearance({ abasOcultas: [], modoCaixa: false })
+          }
         />
 
         {/* Dynamic Tab Workspace */}
-        <main className="flex-1 overflow-y-auto p-3 sm:p-5 lg:p-6">
-          <div className="max-w-[1920px] mx-auto">
+        <main className="flex-1 overflow-y-auto">
+          <div className="max-w-[1920px] mx-auto p-3 sm:p-5 lg:p-6">
             {activeTab === 1 && (
               <Tab1Pdv
                 products={products}
@@ -396,6 +450,7 @@ export function App() {
                 selectedTableNumber={selectedTableNumber}
                 setSelectedTableNumber={setSelectedTableNumber}
                 onSaveTableObservation={handleSaveTableObservation}
+                onUpdateAppearance={handleUpdateAppearance}
               />
             )}
 
@@ -482,20 +537,11 @@ export function App() {
               />
             )}
 
-            {activeTab === 12 && (
-              <Tab12Cliente
-                tables={tables}
-                selectedTableNumber={selectedTableNumber}
-                config={config}
-              />
-            )}
-
             {activeTab === 11 && (
               <Tab11ResumoRapido
                 sales={sales}
                 tables={tables}
                 kitchenOrders={kitchenOrders}
-                config={config}
                 onNavigateTab={(tabId) => setActiveTab(tabId)}
               />
             )}

@@ -242,7 +242,7 @@ export const Tab5Estoque: React.FC<Tab5EstoqueProps> = ({
   return (
     <div className="space-y-4">
       {/* Top Banner */}
-      <div className="bg-white rounded-xl shadow-xs border border-zinc-200 p-4">
+      <div className="cp-card p-4">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div>
             <h2 className="text-base font-extrabold text-zinc-900 flex items-center gap-2">
@@ -267,7 +267,7 @@ export const Tab5Estoque: React.FC<Tab5EstoqueProps> = ({
             {/* Botão Verde: Novo Produto */}
             <button
               onClick={handleOpenCreate}
-              className="px-3.5 py-2 text-xs font-bold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 shadow-xs transition"
+              className="px-3.5 py-2 text-xs font-bold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 transition"
             >
               <Plus className="w-4 h-4" />
               <span>Novo Produto</span>
@@ -276,7 +276,7 @@ export const Tab5Estoque: React.FC<Tab5EstoqueProps> = ({
             {/* Botão Azul: Importar CSV */}
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="px-3.5 py-2 text-xs font-bold rounded-lg bg-sky-600 hover:bg-sky-700 text-white flex items-center gap-1.5 shadow-xs transition"
+              className="px-3.5 py-2 text-xs font-bold rounded-lg bg-sky-600 hover:bg-sky-700 text-white flex items-center gap-1.5 transition"
             >
               <FileSpreadsheet className="w-4 h-4" />
               <span>Importar CSV</span>
@@ -285,7 +285,7 @@ export const Tab5Estoque: React.FC<Tab5EstoqueProps> = ({
             {/* Botão Amarelo: Exportar Cardápio HTML */}
             <button
               onClick={() => exportMenuHtml(products, config)}
-              className="px-3.5 py-2 text-xs font-bold rounded-lg bg-amber-400 hover:bg-amber-500 text-zinc-950 flex items-center gap-1.5 shadow-xs transition"
+              className="px-3.5 py-2 text-xs font-bold rounded-lg bg-amber-400 hover:bg-amber-500 text-zinc-950 flex items-center gap-1.5 transition"
             >
               <FileDown className="w-4 h-4 text-zinc-950" />
               <span>Exportar Cardápio HTML</span>
@@ -331,14 +331,14 @@ export const Tab5Estoque: React.FC<Tab5EstoqueProps> = ({
       </div>
 
       {importNotification && (
-        <div className="bg-emerald-50 border border-emerald-300 text-emerald-800 px-4 py-3 rounded-xl flex items-center gap-2 text-xs font-bold animate-in fade-in">
+        <div className="bg-emerald-50 border border-emerald-300 text-emerald-800 px-4 py-3 rounded-xl flex items-center gap-2 text-xs font-bold">
           <CheckCircle className="w-4 h-4 text-emerald-600" />
           <span>{importNotification}</span>
         </div>
       )}
 
       {/* Filter and Search Bar */}
-      <div className="bg-white rounded-xl shadow-xs border border-zinc-200 p-4">
+      <div className="cp-card p-4">
         <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
           <div className="sm:col-span-6 relative">
             <Search className="w-4 h-4 text-zinc-400 absolute left-3 top-2.5" />
@@ -373,7 +373,7 @@ export const Tab5Estoque: React.FC<Tab5EstoqueProps> = ({
       </div>
 
       {/* Products Table */}
-      <div className="bg-white rounded-xl shadow-xs border border-zinc-200 overflow-hidden">
+      <div className="cp-card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead className="bg-zinc-100/70 text-zinc-600 font-bold uppercase text-[10px] tracking-wider border-b border-zinc-200">
@@ -450,7 +450,7 @@ export const Tab5Estoque: React.FC<Tab5EstoqueProps> = ({
       {/* Modal: Add/Edit Product */}
       {isProductModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full p-5 border border-zinc-200 animate-in zoom-in-95">
+          <div className="cp-card shadow-2xl max-w-lg w-full p-5">
             <div className="flex justify-between items-center pb-3 border-b border-zinc-200">
               <div className="flex items-center gap-2">
                 <Package className="w-5 h-5 text-orange-600" />
@@ -587,7 +587,7 @@ export const Tab5Estoque: React.FC<Tab5EstoqueProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 text-xs font-bold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 shadow-xs"
+                  className="px-5 py-2 text-xs font-bold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5"
                 >
                   <Save className="w-4 h-4" />
                   <span>Salvar Mercadoria</span>
@@ -601,7 +601,7 @@ export const Tab5Estoque: React.FC<Tab5EstoqueProps> = ({
       {/* Modal: Sectors Management */}
       {isSectorModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-5 border border-zinc-200">
+          <div className="cp-card shadow-2xl max-w-md w-full p-5">
             <div className="flex justify-between items-center pb-3 border-b border-zinc-200">
               <div className="flex items-center gap-2">
                 <Tag className="w-5 h-5 text-orange-600" />

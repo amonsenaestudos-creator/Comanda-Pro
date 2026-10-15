@@ -222,7 +222,7 @@ export const Tab10Cadastros: React.FC<Tab10CadastrosProps> = ({
   return (
     <div className="space-y-4">
       {/* Top Banner */}
-      <div className="bg-white rounded-xl shadow-xs border border-zinc-200 p-4">
+      <div className="cp-card p-4">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div>
             <h2 className="text-base font-extrabold text-zinc-900 flex items-center gap-2">
@@ -238,7 +238,7 @@ export const Tab10Cadastros: React.FC<Tab10CadastrosProps> = ({
             {/* Botão Verde: Novo Cadastro */}
             <button
               onClick={handleOpenAdd}
-              className="px-4 py-2 text-xs font-bold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 shadow-xs transition"
+              className="px-4 py-2 text-xs font-bold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 transition"
             >
               <UserPlus className="w-4 h-4" />
               <span>Novo Registro</span>
@@ -273,13 +273,11 @@ export const Tab10Cadastros: React.FC<Tab10CadastrosProps> = ({
       </div>
 
       {/* 5 Sub-Tabs Navigation */}
-      <div className="bg-white rounded-xl shadow-xs border border-zinc-200 p-2 flex flex-wrap gap-1.5">
+      <div className="cp-card p-2 flex flex-wrap gap-1.5">
         <button
           onClick={() => setActiveSubTab('clientes')}
           className={`flex-1 min-w-[130px] py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition ${
-            activeSubTab === 'clientes'
-              ? 'bg-orange-600 text-white shadow-xs'
-              : 'bg-zinc-50 text-zinc-700 hover:bg-zinc-100'
+            activeSubTab === 'clientes' ? 'bg-orange-600 text-white ' : 'bg-zinc-50 text-zinc-700 hover:bg-zinc-100'
           }`}
         >
           <Users className="w-4 h-4" />
@@ -289,9 +287,9 @@ export const Tab10Cadastros: React.FC<Tab10CadastrosProps> = ({
         <button
           onClick={() => setActiveSubTab('entregadores')}
           className={`flex-1 min-w-[130px] py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition ${
-            activeSubTab === 'entregadores'
-              ? 'bg-orange-600 text-white shadow-xs'
-              : 'bg-zinc-50 text-zinc-700 hover:bg-zinc-100'
+      activeSubTab === 'entregadores'
+       ? 'bg-orange-600 text-white '
+       : 'bg-zinc-50 text-zinc-700 hover:bg-zinc-100'
           }`}
         >
           <Truck className="w-4 h-4" />
@@ -301,9 +299,9 @@ export const Tab10Cadastros: React.FC<Tab10CadastrosProps> = ({
         <button
           onClick={() => setActiveSubTab('aplicativos')}
           className={`flex-1 min-w-[130px] py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition ${
-            activeSubTab === 'aplicativos'
-              ? 'bg-orange-600 text-white shadow-xs'
-              : 'bg-zinc-50 text-zinc-700 hover:bg-zinc-100'
+      activeSubTab === 'aplicativos'
+       ? 'bg-orange-600 text-white '
+       : 'bg-zinc-50 text-zinc-700 hover:bg-zinc-100'
           }`}
         >
           <Smartphone className="w-4 h-4" />
@@ -313,9 +311,9 @@ export const Tab10Cadastros: React.FC<Tab10CadastrosProps> = ({
         <button
           onClick={() => setActiveSubTab('fornecedores')}
           className={`flex-1 min-w-[130px] py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition ${
-            activeSubTab === 'fornecedores'
-              ? 'bg-orange-600 text-white shadow-xs'
-              : 'bg-zinc-50 text-zinc-700 hover:bg-zinc-100'
+      activeSubTab === 'fornecedores'
+       ? 'bg-orange-600 text-white '
+       : 'bg-zinc-50 text-zinc-700 hover:bg-zinc-100'
           }`}
         >
           <Building className="w-4 h-4" />
@@ -325,9 +323,9 @@ export const Tab10Cadastros: React.FC<Tab10CadastrosProps> = ({
         <button
           onClick={() => setActiveSubTab('colaboradores')}
           className={`flex-1 min-w-[130px] py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition ${
-            activeSubTab === 'colaboradores'
-              ? 'bg-orange-600 text-white shadow-xs'
-              : 'bg-zinc-50 text-zinc-700 hover:bg-zinc-100'
+      activeSubTab === 'colaboradores'
+       ? 'bg-orange-600 text-white '
+       : 'bg-zinc-50 text-zinc-700 hover:bg-zinc-100'
           }`}
         >
           <UserCheck className="w-4 h-4" />
@@ -336,7 +334,7 @@ export const Tab10Cadastros: React.FC<Tab10CadastrosProps> = ({
       </div>
 
       {/* Search Input Toolbar */}
-      <div className="bg-white rounded-xl shadow-xs border border-zinc-200 p-4">
+      <div className="cp-card p-4">
         <div className="relative">
           <Search className="w-4 h-4 text-zinc-400 absolute left-3 top-2.5" />
           <input
@@ -350,7 +348,7 @@ export const Tab10Cadastros: React.FC<Tab10CadastrosProps> = ({
       </div>
 
       {/* Listing Content by Category */}
-      <div className="bg-white rounded-xl shadow-xs border border-zinc-200 overflow-hidden">
+      <div className="cp-card overflow-hidden">
         {/* SubTab 1: Clientes */}
         {activeSubTab === 'clientes' && (
           <div className="overflow-x-auto">
@@ -621,7 +619,7 @@ export const Tab10Cadastros: React.FC<Tab10CadastrosProps> = ({
       {/* Modal CRUD Form */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full p-5 border border-zinc-200 animate-in zoom-in-95">
+          <div className="cp-card shadow-2xl max-w-lg w-full p-5">
             <div className="flex justify-between items-center pb-3 border-b border-zinc-200">
               <h3 className="font-bold text-sm text-zinc-900 uppercase">
                 {editingId ? 'Editar' : 'Novo'} Cadastro de {activeSubTab.slice(0, -1)}
@@ -1048,7 +1046,7 @@ export const Tab10Cadastros: React.FC<Tab10CadastrosProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 text-xs font-bold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 shadow-xs"
+                  className="px-4 py-1.5 text-xs font-bold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5"
                 >
                   <Save className="w-4 h-4" />
                   <span>Salvar Registro</span>

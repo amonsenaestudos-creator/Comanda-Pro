@@ -96,7 +96,7 @@ export const PrintTicketModal: React.FC<PrintTicketModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4 overflow-y-auto no-print">
-      <div className="bg-white rounded-xl shadow-2xl max-w-md w-full overflow-hidden flex flex-col border border-zinc-200 animate-in fade-in zoom-in-95 duration-150">
+      <div className="cp-card shadow-2xl max-w-md w-full overflow-hidden flex flex-col duration-150">
         {/* Modal Top bar */}
         <div className="bg-zinc-900 text-white px-4 py-3 flex items-center justify-between">
           <div className="flex items-center space-x-2">
@@ -130,7 +130,7 @@ export const PrintTicketModal: React.FC<PrintTicketModalProps> = ({
             </button>
             <button
               onClick={handlePrint}
-              className="px-4 py-1.5 text-xs font-bold rounded-md bg-sky-600 hover:bg-sky-700 text-white flex items-center gap-1.5 shadow-sm transition"
+              className="px-4 py-1.5 text-xs font-bold rounded-md bg-sky-600 hover:bg-sky-700 text-white flex items-center gap-1.5 transition"
             >
               <Printer className="w-3.5 h-3.5" />
               Imprimir Agora
@@ -140,7 +140,7 @@ export const PrintTicketModal: React.FC<PrintTicketModalProps> = ({
 
         {/* Ticket Visual Container */}
         <div className="p-4 bg-zinc-200 max-h-[70vh] overflow-y-auto flex justify-center">
-          <div className="printable-area bg-white text-zinc-950 p-4 shadow-md rounded border border-dashed border-zinc-300 font-mono text-xs w-[320px]">
+          <div className="printable-area bg-white text-zinc-950 p-4 rounded border border-dashed border-zinc-300 font-mono text-xs w-[320px]">
             {/* Header */}
             <div className="text-center pb-2 border-b border-dashed border-zinc-400">
               <div className="font-extrabold text-sm uppercase tracking-wide">
@@ -314,7 +314,7 @@ export const PrintTicketModal: React.FC<PrintTicketModalProps> = ({
           </button>
           <button
             onClick={handlePrint}
-            className="px-5 py-2 text-xs font-bold rounded-lg bg-sky-600 hover:bg-sky-700 text-white flex items-center gap-1.5 shadow-sm transition"
+            className="px-5 py-2 text-xs font-bold rounded-lg bg-sky-600 hover:bg-sky-700 text-white flex items-center gap-1.5 transition"
           >
             <Printer className="w-4 h-4" />
             Imprimir
