@@ -47,6 +47,7 @@ export interface Table {
   cliente?: string;
   abertura?: string;
   total: number;
+  observacaoMesa?: string;
 }
 
 export interface PaymentSplit {

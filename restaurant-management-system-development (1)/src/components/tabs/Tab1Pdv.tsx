@@ -35,6 +35,7 @@ interface Tab1PdvProps {
   }) => void;
   onPrintTableTicket: (mesaNum: number | string, items: OrderItem[]) => void;
   onNavigateTab: (tabId: number) => void;
+  onSaveTableObservation?: (tableNum: number, note: string) => void;
   config: AppConfig;
   selectedTableNumber?: number;
   setSelectedTableNumber?: (tableNum: number) => void;
@@ -48,6 +49,7 @@ export const Tab1Pdv: React.FC<Tab1PdvProps> = ({
   onSendToKitchen,
   onPrintTableTicket,
   onNavigateTab,
+  onSaveTableObservation,
   config,
   selectedTableNumber: propTableNum,
   setSelectedTableNumber: setPropTableNum,
@@ -61,6 +63,7 @@ export const Tab1Pdv: React.FC<Tab1PdvProps> = ({
   const [isPriceLookupOpen, setIsPriceLookupOpen] = useState(false);
   const [priceLookupSearch, setPriceLookupSearch] = useState('');
   const [kitchenAlert, setKitchenAlert] = useState<string | null>(null);
+  const [mesaObservacaoInput, setMesaObservacaoInput] = useState('');
 
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -98,6 +101,12 @@ export const Tab1Pdv: React.FC<Tab1PdvProps> = ({
       p.descricao.toLowerCase().includes(priceLookupSearch.toLowerCase()) ||
       p.ean.includes(priceLookupSearch)
   );
+
+  // Sync mesa observation when table changes
+  useEffect(() => {
+    const tableObj = tables.find((t) => t.numero === currentTableNum);
+    setMesaObservacaoInput(tableObj?.observacaoMesa || '');
+  }, [currentTableNum, tables]);
 
   const handleSelectTable = (num: number) => {
     setCurrentTableNum(num);
@@ -336,7 +345,7 @@ export const Tab1Pdv: React.FC<Tab1PdvProps> = ({
                   <button
                     type="button"
                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                    className="px-2 py-1.5 hover:bg-zinc-100 text-zinc-600 font-bold text-sm"
+                    className="px-2.5 py-1.5 hover:bg-zinc-200 text-zinc-700 font-extrabold text-base rounded-lg transition"
                   >
                     -
                   </button>
@@ -351,7 +360,7 @@ export const Tab1Pdv: React.FC<Tab1PdvProps> = ({
                   <button
                     type="button"
                     onClick={() => setQuantity(quantity + 1)}
-                    className="px-2 py-1.5 hover:bg-zinc-100 text-zinc-600 font-bold text-sm"
+                    className="px-2.5 py-1.5 hover:bg-zinc-200 text-zinc-700 font-extrabold text-base rounded-lg transition"
                   >
                     +
                   </button>
@@ -369,6 +378,23 @@ export const Tab1Pdv: React.FC<Tab1PdvProps> = ({
                 className="flex-1 px-3 py-1.5 text-xs bg-white border border-zinc-300 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-orange-500 text-zinc-700"
               />
             </div>
+          </div>
+
+          {/* Quick Mesa Observation */}
+          <div className="px-4 py-2.5 bg-amber-50/60 border-b border-amber-100 flex items-center gap-2">
+            <label htmlFor="mesa-obs" className="text-xs font-extrabold text-amber-800 uppercase tracking-wide whitespace-nowrap">Obs. Mesa:</label>
+            <input
+              id="mesa-obs"
+              type="text"
+              value={mesaObservacaoInput}
+              onChange={(e) => setMesaObservacaoInput(e.target.value)}
+              onBlur={() => { if (onSaveTableObservation) onSaveTableObservation(currentTableNum, mesaObservacaoInput); }}
+              placeholder="Ex: Cliente alérgico, aniversário, sem gelo..."
+              className="flex-1 bg-white border border-amber-200 rounded-lg px-2.5 py-1 text-xs text-zinc-800 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-amber-300 transition"
+            />
+            {currentTable?.observacaoMesa && (
+              <span className="text-[10px] text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded font-medium truncate max-w-[160px]">{currentTable.observacaoMesa}</span>
+            )}
           </div>
 
           {/* Table Header */}
@@ -444,28 +470,33 @@ export const Tab1Pdv: React.FC<Tab1PdvProps> = ({
           </div>
 
           {/* Totals and Summary Block */}
-          <div className="bg-zinc-900 text-white p-4 border-t border-zinc-800">
-            <div className="flex justify-between items-center mb-2 text-xs text-zinc-400">
-              <span>Total de Itens: <strong className="text-white">{totalItemsCount} un</strong></span>
-              <span>Mesa #{currentTableNum} &bull; v2.0</span>
+          <div className="bg-gradient-to-r from-zinc-900 via-zinc-900 to-zinc-800 text-white p-5 border-t border-zinc-700/60 shadow-[inset_0_2px_12px_rgba(0,0,0,0.15)]">
+            <div className="flex justify-between items-center mb-3 text-xs text-zinc-400 font-medium">
+              <div className="flex items-center gap-3">
+                <span>Mesa <strong className="text-white">#{currentTableNum}</strong></span>
+                <span className="w-1 h-1 rounded-full bg-zinc-600"></span>
+                <span>Total de Itens: <strong className="text-white">{totalItemsCount} un</strong></span>
+              </div>
+              <span>Comanda Pro v2.0</span>
             </div>
 
-            <div className="flex justify-between items-baseline mb-4">
-              <span className="text-sm font-semibold tracking-wide text-zinc-300">
-                TOTAL A PAGAR:
-              </span>
-              <span className="text-3xl font-extrabold text-orange-400 tracking-tight font-mono">
+            <div className="flex justify-between items-baseline mb-5">
+              <div>
+                <span className="text-xs font-semibold tracking-widest text-zinc-400 uppercase block mb-0.5">Total a Pagar</span>
+                <span className="text-sm font-medium text-zinc-300">Subtotal + taxa de serviço</span>
+              </div>
+              <span className="text-4xl font-extrabold text-orange-300 tracking-tighter font-mono drop-shadow-md leading-none">
                 {formatCurrency(totalValue)}
               </span>
             </div>
 
-            {/* Action Buttons: Required colors [Verde, Vermelho, Azul, Amarelo] */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
+            {/* Action Buttons: clean, large, clear */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {/* Verde: Pagar */}
               <button
                 onClick={handlePay}
                 disabled={currentItems.length === 0}
-                className="py-2.5 px-3 rounded-lg font-bold text-xs bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 disabled:opacity-50 disabled:cursor-not-allowed text-white flex items-center justify-center gap-1.5 shadow-sm transition"
+                className="py-3 px-3 rounded-xl font-extrabold text-sm bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed text-white flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/20 transition-all"
               >
                 <DollarSign className="w-4 h-4" />
                 <span>Pagar (F2)</span>
@@ -475,7 +506,7 @@ export const Tab1Pdv: React.FC<Tab1PdvProps> = ({
               <button
                 onClick={() => onPrintTableTicket(currentTableNum, currentItems)}
                 disabled={currentItems.length === 0}
-                className="py-2.5 px-3 rounded-lg font-bold text-xs bg-sky-600 hover:bg-sky-700 active:bg-sky-800 disabled:opacity-50 disabled:cursor-not-allowed text-white flex items-center justify-center gap-1.5 shadow-sm transition"
+                className="py-3 px-3 rounded-xl font-extrabold text-sm bg-sky-600 hover:bg-sky-500 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed text-white flex items-center justify-center gap-2 shadow-lg shadow-sky-900/20 transition-all"
               >
                 <Printer className="w-4 h-4" />
                 <span>Imprimir Mesa</span>
@@ -485,7 +516,7 @@ export const Tab1Pdv: React.FC<Tab1PdvProps> = ({
               <button
                 onClick={handleSendToKitchenAction}
                 disabled={currentItems.length === 0}
-                className="py-2.5 px-3 rounded-lg font-bold text-xs bg-amber-500 hover:bg-amber-600 text-zinc-950 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 shadow-sm transition"
+                className="py-3 px-3 rounded-xl font-extrabold text-sm bg-amber-400 hover:bg-amber-300 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed text-zinc-950 flex items-center justify-center gap-2 shadow-lg shadow-amber-900/10 transition-all"
               >
                 <ChefHat className="w-4 h-4 text-zinc-950" />
                 <span>P/ Cozinha</span>
@@ -495,7 +526,7 @@ export const Tab1Pdv: React.FC<Tab1PdvProps> = ({
               <button
                 onClick={handleClearTable}
                 disabled={currentItems.length === 0}
-                className="py-2.5 px-3 rounded-lg font-bold text-xs bg-rose-600 hover:bg-rose-700 text-white disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 shadow-sm transition"
+                className="py-3 px-3 rounded-xl font-extrabold text-sm bg-rose-600 hover:bg-rose-500 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed text-white flex items-center justify-center gap-2 shadow-lg shadow-rose-900/20 transition-all"
               >
                 <Trash2 className="w-4 h-4" />
                 <span>Limpar</span>
