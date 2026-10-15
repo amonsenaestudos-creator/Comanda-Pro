@@ -18,6 +18,8 @@ interface HeaderProps {
   activeTab: number;
   licenseExpiresAt: string;
   licenseOffline: boolean;
+  /** Só aparece no `npm run dev` sem Firebase: exibe o rótulo de demonstração. */
+  demoMode?: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -26,6 +28,7 @@ export const Header: React.FC<HeaderProps> = ({
   onNavigateTab,
   licenseExpiresAt,
   licenseOffline,
+  demoMode = false,
 }) => {
   const [currentDateTime, setCurrentDateTime] = useState<string>(
     formatDateTime(new Date())
@@ -122,10 +125,15 @@ export const Header: React.FC<HeaderProps> = ({
                 : 'border-emerald-800/70 bg-emerald-950/40 text-emerald-300'
             }`}
           >
+            {demoMode && (
+              <span className="text-[9px] font-black uppercase tracking-wide bg-amber-400 text-zinc-900 px-1.5 py-0.5 rounded">
+                Demonstração
+              </span>
+            )}
             <ShieldCheck className="h-4 w-4 shrink-0" aria-hidden="true" />
             <span className="flex flex-col text-left leading-tight">
               <span className="text-[10px] font-bold uppercase tracking-wide">
-                {licenseOffline ? 'Offline' : 'Licença ativa'}
+                {demoMode ? 'Modo dev' : licenseOffline ? 'Offline' : 'Licença ativa'}
               </span>
               <span className="text-[10px] opacity-80">Até {licenseExpiryLabel}</span>
             </span>

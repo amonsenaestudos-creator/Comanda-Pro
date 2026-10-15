@@ -11,7 +11,7 @@ import {
   ChefHat,
   Users,
   Sparkles,
-  Monitor,
+  Eye,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
@@ -33,7 +33,90 @@ interface SidebarProps {
   setCollapsed: (collapsed: boolean) => void;
   occupiedTablesCount: number;
   kitchenPendingCount: number;
+  /** Abas escondidas pelo "Modo Caixa" ou pela configuração de aparência. */
+  hiddenTabs?: number[];
+  modoCaixa?: boolean;
+  onShowAllTabs?: () => void;
 }
+
+export const SIDEBAR_TABS: TabItem[] = [
+  {
+    id: 1,
+    label: 'Frente de Caixa',
+    sublabel: 'PDV & Comandas',
+    icon: ShoppingCart,
+  },
+  {
+    id: 2,
+    label: 'Tela Pagamentos',
+    sublabel: 'Checkout & PIX',
+    icon: CreditCard,
+  },
+  {
+    id: 3,
+    label: 'Relatórios de Venda',
+    sublabel: 'Histórico & Fechamento',
+    icon: FileText,
+  },
+  {
+    id: 4,
+    label: 'Configuração',
+    sublabel: 'Empresa & BrasilAPI',
+    icon: Settings,
+  },
+  {
+    id: 5,
+    label: 'Estoques & Base',
+    sublabel: 'Import CSV & Cardápio',
+    icon: Package,
+  },
+  {
+    id: 6,
+    label: 'Financeiro',
+    sublabel: 'Cartões & Conciliação',
+    icon: DollarSign,
+  },
+  {
+    id: 7,
+    label: 'Gráficos (%)',
+    sublabel: 'Dashboard & Vendas',
+    icon: BarChart3,
+  },
+  {
+    id: 8,
+    label: 'Gestão de Mesas',
+    sublabel: 'Mesas 1 a 50 (Salão)',
+    icon: LayoutGrid,
+  },
+  {
+    id: 9,
+    label: 'Cozinha & Delivery',
+    sublabel: 'Kanban & Produção',
+    icon: ChefHat,
+  },
+  {
+    id: 10,
+    label: 'Cadastros',
+    sublabel: 'Clientes & Equipe',
+    icon: Users,
+  },
+  {
+    id: 11,
+    label: 'Resumo Rápido',
+    sublabel: 'Caixa & Status',
+    icon: Sparkles,
+    color: 'text-amber-300',
+  },
+];
+
+/** Rótulos das abas, reutilizados na tela de Configuração. */
+export const TAB_LABELS: Record<number, { label: string; sublabel: string }> = SIDEBAR_TABS.reduce(
+  (acc, tab) => {
+    acc[tab.id] = { label: tab.label, sublabel: tab.sublabel };
+    return acc;
+  },
+  {} as Record<number, { label: string; sublabel: string }>
+);
 
 export const Sidebar: React.FC<SidebarProps> = ({
   activeTab,
@@ -42,92 +125,26 @@ export const Sidebar: React.FC<SidebarProps> = ({
   setCollapsed,
   occupiedTablesCount,
   kitchenPendingCount,
+  hiddenTabs = [],
+  modoCaixa = false,
+  onShowAllTabs,
 }) => {
-  const tabs: TabItem[] = [
-    {
-      id: 1,
-      label: 'Frente de Caixa',
-      sublabel: 'PDV & Comandas',
-      icon: ShoppingCart,
-    },
-    {
-      id: 2,
-      label: 'Tela Pagamentos',
-      sublabel: 'Checkout & PIX',
-      icon: CreditCard,
-    },
-    {
-      id: 3,
-      label: 'Relatórios de Venda',
-      sublabel: 'Histórico & Fechamento',
-      icon: FileText,
-    },
-    {
-      id: 4,
-      label: 'Configuração',
-      sublabel: 'Empresa & BrasilAPI',
-      icon: Settings,
-    },
-    {
-      id: 5,
-      label: 'Estoques & Base',
-      sublabel: 'Import CSV & Cardápio',
-      icon: Package,
-    },
-    {
-      id: 6,
-      label: 'Financeiro',
-      sublabel: 'Cartões & Conciliação',
-      icon: DollarSign,
-    },
-    {
-      id: 7,
-      label: 'Gráficos (%)',
-      sublabel: 'Dashboard & Vendas',
-      icon: BarChart3,
-    },
-    {
-      id: 8,
-      label: 'Gestão de Mesas',
-      sublabel: 'Mesas 1 a 50 (Salão)',
-      icon: LayoutGrid,
-      badge: occupiedTablesCount > 0 ? occupiedTablesCount : undefined,
-      badgeColor: 'bg-rose-500 text-white',
-    },
-    {
-      id: 9,
-      label: 'Cozinha & Delivery',
-      sublabel: 'Kanban & Produção',
-      icon: ChefHat,
-      badge: kitchenPendingCount > 0 ? kitchenPendingCount : undefined,
-      badgeColor: 'bg-orange-500 text-white',
-    },
-    {
-      id: 10,
-      label: 'Cadastros',
-      sublabel: 'Clientes & Equipe',
-      icon: Users,
-    },
-    {
-      id: 12,
-      label: 'Tela Cliente',
-      sublabel: 'Comanda visual',
-      icon: Monitor,
-      color: 'text-amber-300',
-    },
-    {
-      id: 11,
-      label: 'Resumo Rápido',
-      sublabel: 'Caixa & Status',
-      icon: Sparkles,
-      color: 'text-amber-300',
-    },
-  ];
+  const tabs: TabItem[] = SIDEBAR_TABS.map((tab) => {
+    if (tab.id === 8) {
+      return { ...tab, badge: occupiedTablesCount > 0 ? occupiedTablesCount : undefined, badgeColor: 'bg-rose-500 text-white' };
+    }
+    if (tab.id === 9) {
+      return { ...tab, badge: kitchenPendingCount > 0 ? kitchenPendingCount : undefined, badgeColor: 'bg-orange-500 text-white' };
+    }
+    return tab;
+  });
+
+  const visibleTabs = tabs.filter((tab) => !hiddenTabs.includes(tab.id));
 
   return (
     <aside
       className={`bg-zinc-950 text-zinc-300 border-r border-zinc-800 transition-all duration-200 ease-in-out flex flex-col select-none relative z-30 shrink-0 ${
-        collapsed ? 'w-16' : 'w-64'
+        collapsed ? 'w-16' : 'w-60'
       }`}
     >
       {/* Sidebar Header toggle */}
@@ -137,6 +154,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <span className="text-[11px] font-bold tracking-wider text-zinc-400 uppercase">
               Menu Principal
             </span>
+            {modoCaixa && (
+              <span
+                title="Modo Caixa ligado: só as telas do caixa aparecem aqui. Desligue em Configuração."
+                className="text-[9px] font-black uppercase tracking-wide bg-orange-600 text-white px-1.5 py-0.5 rounded"
+              >
+                Modo Caixa
+              </span>
+            )}
           </div>
         )}
         <button
@@ -156,7 +181,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Nav List */}
       <nav className="flex-1 overflow-y-auto py-2 px-2 space-y-1">
-        {tabs.map((tab) => {
+        {visibleTabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
 
@@ -242,6 +267,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
               style={{ width: `${(occupiedTablesCount / 50) * 100}%` }}
             />
           </div>
+
+          {hiddenTabs.length > 0 && onShowAllTabs && (
+            <button
+              type="button"
+              onClick={onShowAllTabs}
+              title="Mostrar outra vez as telas escondidas do menu"
+              className="mt-2 w-full flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-semibold transition"
+            >
+              <Eye className="w-3.5 h-3.5 text-orange-400" />
+              <span>Mostrar as {hiddenTabs.length} tela{hiddenTabs.length > 1 ? 's' : ''} escondida{hiddenTabs.length > 1 ? 's' : ''}</span>
+            </button>
+          )}
         </div>
       )}
     </aside>

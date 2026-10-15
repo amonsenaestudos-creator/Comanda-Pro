@@ -1,19 +1,19 @@
 import React from 'react';
 import { TrendingUp, Receipt, Users, CookingPot, ArrowRight } from 'lucide-react';
-import { Sale, Table, KitchenOrder, AppConfig } from '../../types';
-import { formatCurrency } from '../../utils/formatters';
+import { Sale, Table, KitchenOrder } from '../../types';
+import { formatCurrency, localDayKey } from '../../utils/formatters';
 
 interface Props {
   sales: Sale[];
   tables: Table[];
   kitchenOrders: KitchenOrder[];
-  config: AppConfig;
   onNavigateTab: (tabId: number) => void;
 }
 
-export const Tab11ResumoRapido: React.FC<Props> = ({ sales, tables, kitchenOrders, config, onNavigateTab }) => {
-  const today = new Date().toISOString().slice(0, 10);
-  const todaySales = sales.filter((s) => s.dataHora?.slice(0, 10) === today || s.createdAt?.slice(0, 10) === today);
+export const Tab11ResumoRapido: React.FC<Props> = ({ sales, tables, kitchenOrders, onNavigateTab }) => {
+  const hoje = localDayKey();
+  const isHoje = (s: Sale) => localDayKey(s.dataHora) === hoje;
+  const todaySales = sales.filter(isHoje);
   const totalHoje = todaySales.reduce((sum, s) => sum + (s.totalLiquido || s.subtotal || 0), 0);
   const ocupadas = tables.filter((t) => t.status === 'ocupada').length;
   const pendentesCozinha = kitchenOrders.filter((k) => k.status === 'novo' || k.status === 'preparo').length;
@@ -97,10 +97,9 @@ export const Tab11ResumoRapido: React.FC<Props> = ({ sales, tables, kitchenOrder
           <h3 className="text-lg font-extrabold text-zinc-900 mb-4">Top Garçons (Hoje)</h3>
           <div className="space-y-3">
             {(() => {
-              const today = new Date().toISOString().slice(0,10);
               const map: Record<string, number> = {};
               sales.forEach((s) => {
-                if ((s.dataHora?.slice(0,10) === today || s.createdAt?.slice(0,10) === today)) {
+                if (isHoje(s)) {
                   const a = s.atendente || 'Não identificado';
                   map[a] = (map[a] || 0) + (s.totalLiquido || s.subtotal || 0);
                 }
@@ -123,10 +122,9 @@ export const Tab11ResumoRapido: React.FC<Props> = ({ sales, tables, kitchenOrder
           <h3 className="text-lg font-extrabold text-zinc-900 mb-4">Vendas por Mesa</h3>
           <div className="space-y-3">
             {(() => {
-              const today = new Date().toISOString().slice(0,10);
               const map: Record<string, number> = {};
               sales.forEach((s) => {
-                if ((s.dataHora?.slice(0,10) === today || s.createdAt?.slice(0,10) === today)) {
+                if (isHoje(s)) {
                   const m = typeof s.mesa === 'number' ? `Mesa ${s.mesa}` : s.mesa || 'Balcão';
                   map[m] = (map[m] || 0) + (s.totalLiquido || s.subtotal || 0);
                 }

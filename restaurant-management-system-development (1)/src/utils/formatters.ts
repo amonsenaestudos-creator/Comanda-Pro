@@ -69,3 +69,13 @@ export const maskPhone = (val: string): string => {
 export const maskCep = (val: string): string => {
   return val.replace(/\D/g, '').replace(/^(\d{5})(\d)/, '$1-$2').substring(0, 9);
 };
+
+/**
+ * Chave do dia no fuso local (AAAAMMDD). Diferente de toISOString(), que é UTC
+ * e jogaria a venda da noite para o dia seguinte no horário de Brasília.
+ */
+export const localDayKey = (dateStr?: string | Date): string => {
+  const d = dateStr ? new Date(dateStr) : new Date();
+  if (isNaN(d.getTime())) return '';
+  return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
+};

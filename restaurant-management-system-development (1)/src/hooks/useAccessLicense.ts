@@ -18,6 +18,8 @@ export interface AccessLicenseState {
   offline: boolean;
   message: string | null;
   activate: (key: string) => Promise<boolean>;
+  /** Licença fictícia usada só no `npm run dev` quando não há Firebase configurado. */
+  demoMode?: boolean;
 }
 
 const RECHECK_INTERVAL_MS = 5 * 60 * 1000;
@@ -46,6 +48,8 @@ export function useAccessLicense(): AccessLicenseState {
   const [license, setLicense] = useState<LicenseInfo | null>(null);
   const [offline, setOffline] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  // true apenas no modo demonstração do `npm run dev` (sem Firebase configurado)
+  const [demoMode, setDemoMode] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -92,6 +96,21 @@ export function useAccessLicense(): AccessLicenseState {
       if (cancelled) return;
       if (cachedLicense) {
         finishAsActive(cachedLicense, true);
+      } else if (import.meta.env.DEV) {
+        // SOMENTE EM `npm run dev`: sem Firebase configurado a interface abre em
+        // modo demonstração, para testar telas. O build de produção (vite build)
+        // não recebe este atalho e continua exigindo a chave de ativação.
+        const demoExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+        setDemoMode(true);
+        finishAsActive(
+          {
+            restaurantName: 'Demonstração local (sem licença)',
+            expiresAt: demoExpiresAt,
+            leaseExpiresAt: demoExpiresAt,
+            periodId: demoExpiresAt.slice(0, 7),
+          },
+          true
+        );
       } else {
         setMessage(
           'A ativação ainda não está configurada. Peça à Conta Bahia para configurar o Firebase antes de liberar o sistema.'
@@ -122,7 +141,7 @@ export function useAccessLicense(): AccessLicenseState {
   }, []);
 
   useEffect(() => {
-    if (status !== 'active' || !license) return;
+    if (status !== 'active' || !license || demoMode) return;
 
     let cancelled = false;
     let requestInProgress = false;
@@ -189,7 +208,7 @@ export function useAccessLicense(): AccessLicenseState {
       window.removeEventListener('focus', recheck);
       document.removeEventListener('visibilitychange', onVisible);
     };
-  }, [status, license]);
+  }, [status, license, demoMode]);
 
-  return { status, license, offline, message, activate };
+  return { status, license, offline, message, activate, demoMode };
 }

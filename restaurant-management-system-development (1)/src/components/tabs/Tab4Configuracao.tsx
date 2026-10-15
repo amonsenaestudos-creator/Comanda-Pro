@@ -11,9 +11,15 @@ import {
   AlertCircle,
   ArrowRight,
   Shield,
+  MonitorSmartphone,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
-import { AppConfig } from '../../types';
+import { AppConfig, CaixaAppearance } from '../../types';
 import { maskCnpjCpf, maskPhone, maskCep } from '../../utils/formatters';
+import { AppearanceControls } from '../AppearanceControls';
+import { TAB_LABELS } from '../Sidebar';
+import { CAIXA_TABS, HIDABLE_TABS, resolveAppearance, resolveHiddenTabs } from '../../utils/storage';
 
 interface Tab4ConfiguracaoProps {
   config: AppConfig;
@@ -26,7 +32,31 @@ export const Tab4Configuracao: React.FC<Tab4ConfiguracaoProps> = ({
   onSaveConfig,
   onNavigateTab,
 }) => {
-  const [formData, setFormData] = useState<AppConfig>(config);
+  const [formData, setFormData] = useState<AppConfig>(() => ({
+    ...config,
+    aparencia: resolveAppearance(config.aparencia),
+  }));
+
+  const aparencia = resolveAppearance(formData.aparencia);
+  const abasOcultasEfetivas = resolveHiddenTabs(aparencia);
+
+  /** Aparência salva e aplica na hora (sem precisar clicar em Salvar). */
+  const handleAppearanceChange = (patch: Partial<CaixaAppearance>) => {
+    const next: AppConfig = {
+      ...formData,
+      aparencia: { ...aparencia, ...patch },
+    };
+    setFormData(next);
+    onSaveConfig(next);
+  };
+
+  const toggleAbaOculta = (tabId: number) => {
+    const list = aparencia.abasOcultas || [];
+    const nextList = list.includes(tabId)
+      ? list.filter((id) => id !== tabId)
+      : [...list, tabId];
+    handleAppearanceChange({ abasOcultas: nextList });
+  };
   const [isSearchingCnpj, setIsSearchingCnpj] = useState(false);
   const [cnpjFeedback, setCnpjFeedback] = useState<{
     type: 'success' | 'error';
@@ -114,10 +144,11 @@ export const Tab4Configuracao: React.FC<Tab4ConfiguracaoProps> = ({
           <div>
             <h2 className="text-base font-extrabold text-zinc-900 flex items-center gap-2">
               <Settings className="w-5 h-5 text-orange-600" />
-              <span>Configurações do Sistema & Integração BrasilAPI</span>
+              <span>Configurações do Sistema</span>
             </h2>
             <p className="text-xs text-zinc-500">
-              Personalize alíquotas fiscais, taxas de comissão de cartões, dados cadastrais e mensagem de rodapé.
+              Ajuste a tela do caixa (tema, tamanho da letra, atalhos e o que aparece no menu) e,
+              abaixo, os dados da empresa, taxas fiscais e o rodapé do cupom.
             </p>
           </div>
 
@@ -173,6 +204,125 @@ export const Tab4Configuracao: React.FC<Tab4ConfiguracaoProps> = ({
       )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
+        {/* ===== Seção: Tela do Caixa (aparência, atalhos e menu) ===== */}
+        <div className="cp-card p-5">
+          <div className="flex items-center justify-between pb-3 border-b cp-line mb-4 gap-2 flex-wrap">
+            <div className="flex items-center space-x-2">
+              <MonitorSmartphone className="w-5 h-5 text-orange-600" />
+              <h3 className="font-bold text-sm cp-text">
+                Tela do Caixa &mdash; aparência, atalhos e menu
+              </h3>
+            </div>
+            <span className="text-[11px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded">
+              aplica na hora, não precisa salvar
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
+            <div className="xl:col-span-2 cp-inset rounded-xl p-4">
+              <AppearanceControls
+                aparencia={aparencia}
+                onChange={handleAppearanceChange}
+              />
+            </div>
+
+            {/* Prévia viva + controle das telas do menu */}
+            <div className="space-y-4">
+              <div className="cp-inset rounded-xl p-3">
+                <p className="cp-label cp-faint font-bold mb-2">Prévia da tela do caixa</p>
+                <div className="cp-card p-3 space-y-2">
+                  <div className="flex items-end justify-between gap-2">
+                    <div>
+                      <div className="cp-label cp-faint font-bold">Mesa / Comanda</div>
+                      <div className="cp-text font-black text-2xl leading-none">07</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="cp-label cp-faint font-bold">Total</div>
+                      <div className="cp-total cp-accent font-black font-mono">R$ 132,00</div>
+                    </div>
+                  </div>
+
+                  <div className="cp-row flex items-center gap-2 pt-1.5">
+                    <span className="cp-soft border cp-line rounded-lg px-1.5 py-0.5 cp-num font-black cp-text">
+                      2
+                    </span>
+                    <span className="cp-item cp-text font-semibold flex-1 truncate">
+                      X-Burger Artesanal com Fritas
+                    </span>
+                    <span className="cp-num cp-text font-black font-mono">R$ 69,80</span>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <div className="cp-tile flex-1">
+                      <div className="cp-item cp-text font-bold leading-tight">Coca-Cola Lata</div>
+                      <div className="cp-price cp-text font-black font-mono">R$ 7,50</div>
+                    </div>
+                    <div className="cp-tile flex-1">
+                      <div className="cp-item cp-text font-bold leading-tight">Suco de Laranja</div>
+                      <div className="cp-price cp-text font-black font-mono">R$ 10,00</div>
+                    </div>
+                  </div>
+
+                  <div className="cp-btn bg-emerald-600 text-white w-full">
+                    <span>Pagar</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="cp-inset rounded-xl p-3">
+                <div className="flex items-center justify-between mb-2 gap-2">
+                  <p className="text-xs font-bold cp-text">Telas do menu lateral</p>
+                  {(aparencia.abasOcultas.length > 0 || aparencia.modoCaixa) && (
+                    <button
+                      type="button"
+                      onClick={() => handleAppearanceChange({ abasOcultas: [], modoCaixa: false })}
+                      className="text-[10px] font-bold text-orange-600 flex items-center gap-1"
+                    >
+                      <Eye className="w-3 h-3" /> Mostrar todas
+                    </button>
+                  )}
+                </div>
+                <div className="space-y-1">
+                  {[...HIDABLE_TABS]
+                    .sort((a, b) => a - b)
+                    .map((tabId) => {
+                      const escondida = abasOcultasEfetivas.includes(tabId);
+                      const info = TAB_LABELS[tabId] || { label: `Aba ${tabId}`, sublabel: '' };
+                      return (
+                        <button
+                          key={tabId}
+                          type="button"
+                          onClick={() => toggleAbaOculta(tabId)}
+                          className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg border text-left transition ${
+                            escondida
+                              ? 'cp-soft cp-faint border-transparent'
+                              : 'cp-card cp-text hover:border-orange-300'
+                          }`}
+                        >
+                          {escondida ? (
+                            <EyeOff className="w-3.5 h-3.5 shrink-0" />
+                          ) : (
+                            <Eye className="w-3.5 h-3.5 shrink-0 text-emerald-600" />
+                          )}
+                          <span className="min-w-0 flex-1">
+                            <span className="block cp-small font-bold truncate">{info.label}</span>
+                            <span className="block text-[9px] cp-faint truncate">{info.sublabel}</span>
+                          </span>
+                          <span className="text-[9px] font-mono cp-faint shrink-0">#{tabId}</span>
+                        </button>
+                      );
+                    })}
+                </div>
+                <p className="text-[10px] cp-faint mt-2 leading-snug">
+                  Com o <strong>Modo Caixa</strong> ligado, ficam no menu só:
+                  <br />
+                  {CAIXA_TABS.map((id) => TAB_LABELS[id]?.label || `Aba ${id}`).join(' &bull; ')}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Section 1: Dados da Empresa & Consulta BrasilAPI */}
         <div className="bg-white rounded-xl shadow-xs border border-zinc-200 p-5">
           <div className="flex items-center justify-between pb-3 border-b border-zinc-200 mb-4">

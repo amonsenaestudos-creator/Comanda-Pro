@@ -102,6 +102,40 @@ export interface CommissionRates {
   outros: number;
 }
 
+/** Aparência e usabilidade da Frente de Caixa (o "caixa"). */
+export type TemaModo = 'claro' | 'escuro';
+export type EscalaFonte = 'padrao' | 'grande' | 'extra';
+export type Densidade = 'confortavel' | 'compacta';
+export type TamanhoItemCardapio = 'pequeno' | 'medio' | 'grande';
+
+export interface CaixaAppearance {
+  tema: TemaModo;
+  escalaFonte: EscalaFonte;
+  densidade: Densidade;
+  tamanhoItemCardapio: TamanhoItemCardapio;
+  /** Mostrar só as telas que o caixa usa (PDV, Pagamento, Fechamento, Resumo). */
+  modoCaixa: boolean;
+  /** Abas escondidas do menu lateral ( ids das tabs ). */
+  abasOcultas: number[];
+  mostrarEstoque: boolean;
+  mostrarEan: boolean;
+  mostrarSetor: boolean;
+  mostrarUnitarioNoItem: boolean;
+  mostrarObsItem: boolean;
+  mostrarObsMesa: boolean;
+  mostrarBotaoCozinha: boolean;
+  mostrarBotaoImprimir: boolean;
+  mostrarConsultaPreco: boolean;
+  /** Botões de quantidade rápida ao lado do campo Qtd. */
+  quantidadesRapidas: number[];
+  /** Cursor já no campo de busca ao abrir o PDV (agiliza o leitor de código). */
+  focoBuscaAoAbrir: boolean;
+  /** Enter lança o primeiro produto da busca. */
+  enterAdicionaPrimeiro: boolean;
+  /** Pedir confirmação antes de limpar a comanda da mesa. */
+  confirmarLimpar: boolean;
+}
+
 export interface AppConfig {
   dadosEmpresa: CompanyData;
   taxasComissao: CommissionRates;
@@ -111,6 +145,7 @@ export interface AppConfig {
   mensagemRodape: string;
   chavePix: string;
   usuarioAtual: string;
+  aparencia: CaixaAppearance;
 }
 
 export interface Customer {

@@ -1,6 +1,7 @@
 import {
   AppConfig,
   AppIntegration,
+  CaixaAppearance,
   Customer,
   Deliverer,
   Employee,
@@ -10,6 +11,63 @@ import {
   Supplier,
   Table,
 } from '../types';
+
+/**
+ * Abas que continuam visíveis quando o "Modo Caixa" está ligado.
+ * 1 = Frente de Caixa | 2 = Pagamentos | 3 = Relatórios/Fechamento | 11 = Resumo do Caixa
+ */
+export const CAIXA_TABS = [1, 2, 3, 11];
+
+/** Todas as abas que podem ser escondidas do menu lateral. */
+export const HIDABLE_TABS = [4, 5, 6, 7, 8, 9, 10];
+
+export const DEFAULT_APARENCIA: CaixaAppearance = {
+  tema: 'claro',
+  escalaFonte: 'padrao',
+  densidade: 'confortavel',
+  tamanhoItemCardapio: 'medio',
+  modoCaixa: false,
+  abasOcultas: [],
+  mostrarEstoque: true,
+  mostrarEan: false,
+  mostrarSetor: true,
+  mostrarUnitarioNoItem: true,
+  mostrarObsItem: true,
+  mostrarObsMesa: true,
+  mostrarBotaoCozinha: true,
+  mostrarBotaoImprimir: true,
+  mostrarConsultaPreco: false,
+  quantidadesRapidas: [1, 2, 3, 5],
+  focoBuscaAoAbrir: true,
+  enterAdicionaPrimeiro: true,
+  confirmarLimpar: true,
+};
+
+/** Garante que um config antigo do localStorage receba os campos novos. */
+export const resolveAppearance = (stored?: Partial<CaixaAppearance> | null): CaixaAppearance => ({
+  ...DEFAULT_APARENCIA,
+  ...(stored || {}),
+});
+
+export const normalizeConfig = (stored?: Partial<AppConfig> | null): AppConfig => {
+  const storedData = (stored || {}) as Partial<AppConfig>;
+  return {
+    ...DEFAULT_CONFIG,
+    ...storedData,
+    dadosEmpresa: { ...DEFAULT_CONFIG.dadosEmpresa, ...(storedData.dadosEmpresa || {}) },
+    taxasComissao: { ...DEFAULT_CONFIG.taxasComissao, ...(storedData.taxasComissao || {}) },
+    aparencia: resolveAppearance(storedData.aparencia),
+  };
+};
+
+/** Lista final de abas escondidas (modo caixa + escolha manual). */
+export const resolveHiddenTabs = (aparencia?: Partial<CaixaAppearance> | null): number[] => {
+  const resolved = resolveAppearance(aparencia);
+  const manual = (resolved.abasOcultas || []).filter((id) => HIDABLE_TABS.includes(id));
+  if (!resolved.modoCaixa) return manual;
+  const hiddenByCaixaMode = HIDABLE_TABS.filter((id) => !CAIXA_TABS.includes(id));
+  return Array.from(new Set([...manual, ...hiddenByCaixaMode]));
+};
 
 export const DEFAULT_CONFIG: AppConfig = {
   dadosEmpresa: {
@@ -42,6 +100,7 @@ export const DEFAULT_CONFIG: AppConfig = {
     'Obrigado pela preferência! Volte sempre ao ComandaPro Gourmet.\nDocumento Auxiliar de Venda - Não é documento fiscal.',
   chavePix: 'financeiro@comandapro.com.br',
   usuarioAtual: 'Operador 01 - Carlos Eduardo',
+  aparencia: DEFAULT_APARENCIA,
 };
 
 export const DEFAULT_SECTORS = [

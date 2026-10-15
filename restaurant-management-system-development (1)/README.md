@@ -73,3 +73,48 @@ Na próxima verificação (ou ao recarregar a página), o Comanda Pro bloqueia a
 
 ### Como Renovar um Cliente
 Basta atualizar o campo `validade` para o próximo mês (ex: `2026-12-31T23:59:59Z`) e garantir que `ativa: true`.
+
+---
+
+## 4. Tela do Caixa: aparência e atalhos (v2.1)
+
+Todas as preferências da Frente de Caixa ficam guardadas no `localStorage`
+junto com os demais dados do estabelecimento (`comandapro_config_v2`) e podem
+ser mexidas de dois lugares:
+
+- **Botão "Ajustes rápidos"** na própria Frente de Caixa (Aba 1) — para o
+  operador ajustar na hora, sem sair do caixa.
+- **Aba Configuração (Aba 4)**, primeira seção *"Tela do Caixa — aparência,
+  atalhos e menu"* — onde estão as opções completas.
+
+Opções disponíveis:
+
+| Opção | Efeito |
+| --- | --- |
+| Tema da tela | Claro / **Escuro** (melhor no balcão à noite) |
+| Tamanho da letra | Padrão / Grande / Extra (total, preços e itens crescem) |
+| Espaçamento | Confortável / **Compacto** (cabe mais coisa na tela) |
+| Botões do cardápio | Produto maior ou mais itens por linha |
+| Modo Caixa | Menu lateral mostra só Frente de Caixa, Pagamentos, Relatórios e Resumo |
+| Telas do menu | Esconde/reesconde individualmente as abas que o caixa não usa |
+| O que aparece na comanda | Estoque, EAN, setor, preço unitário, observação do item, observação da mesa, botão da cozinha, botão de imprimir, consulta de preço |
+| Quantidades rápidas | Botões de 1 toque (padrão `1, 2, 3, 5`) |
+| Enter lança o primeiro da busca | Digite/bipe e Enter, sem tirar a mão do teclado |
+| Confirmar antes de limpar a mesa | Evita apagar a comanda sem querer |
+
+Atalhos de teclado na Frente de Caixa:
+
+- `F1` Frente de Caixa &nbsp;•&nbsp; `F2` ir para o Pagamento &nbsp;•&nbsp; `F11` Resumo do Caixa
+- `Enter` no campo de busca lança o primeiro produto encontrado
+- `Alt + ←` / `Alt + →` troca de mesa
+- `Esc` limpa a busca (e fecha a janela de ajustes)
+
+> Ao ativar o **Modo Caixa**, se o operador estiver em uma tela que foi
+> escondida, o sistema volta sozinho para a Frente de Caixa.
+
+### Testando localmente sem Firebase
+
+`npm run dev` **sem** as variáveis `VITE_FIREBASE_*` abre o sistema em *modo
+demonstração* (aparece o selo "Demonstração" no topo) só para permitir testar
+as telas. O `npm run build` usado no GitHub Pages não recebe esse atalho e
+continua exigindo a chave de ativação.
