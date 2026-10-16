@@ -114,13 +114,13 @@ export function AccessGate({ status, message, onActivate }: AccessGateProps) {
               <>
                 <p className="text-sm leading-6 text-zinc-300">
                   Digite a chave enviada pela Conta Bahia. O caixa funciona enquanto o campo
-                  <code>ativa</code> da licença for verdadeiro.
+                  <code>ativa</code> (ou <code>activa</code>) da licença for verdadeiro.
                 </p>
 
         <div className="mt-5 flex items-start gap-3 rounded-2xl border border-emerald-500/20 bg-emerald-500/[0.07] p-3.5">
                   <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-emerald-400" aria-hidden="true" />
                   <p className="text-xs leading-5 text-emerald-100/80">
-                    A chave é conferida no Firestore a cada 2 minutos. Se o <code>ativa</code>
+                    A chave é conferida no Firestore a cada 2 minutos. Se o campo <code>ativa</code>/<code>activa</code>
                     for marcado como false no Firebase Console, este caixa é bloqueado em seguida.
                   </p>
                 </div>
@@ -205,7 +205,7 @@ export function AccessGate({ status, message, onActivate }: AccessGateProps) {
 
      <div className="flex items-center justify-center gap-2 border-t border-zinc-800 bg-zinc-950/50 px-5 py-3 text-[11px] font-medium text-zinc-500">
             <ShieldCheck className="h-3.5 w-3.5 text-zinc-600" aria-hidden="true" />
-            Quem liga e desliga o caixa é o campo ativa da licença, controlado pela Conta Bahia
+            Quem liga e desliga o caixa é o campo ativa/activa da licença, controlado pela Conta Bahia
           </div>
         </div>
 
