@@ -24,7 +24,7 @@ interface StoredLicenseCache {
 }
 
 export class InvalidAccessKeyError extends Error {
-  constructor(message = 'Chave inválida ou desativada. O caixa só funciona com ativa: true.') {
+  constructor(message = 'Chave inválida ou desativada. O caixa só funciona com o campo ativa/activa: true.') {
     super(message);
     this.name = 'InvalidAccessKeyError';
   }
@@ -120,8 +120,9 @@ export async function getCachedLicense(): Promise<LicenseInfo | null> {
 }
 
 /**
- * Consulta o documento `licencas/{chave}` e libera o caixa somente se `ativa`
- * for verdadeiro. Os campos `validade`/datas são ignorados de propósito.
+ * Consulta o documento `licencas/{chave}` e libera o caixa somente se o campo
+ * `ativa` (também aceita a grafia `activa`, com "c") for verdadeiro.
+ * Os campos `validade`/datas são ignorados de propósito.
  */
 export async function checkLicenseOnline(key: string): Promise<LicenseInfo> {
   if (!hasLicenseBackendConfig || !firestoreDb) {

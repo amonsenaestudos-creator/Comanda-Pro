@@ -8,11 +8,17 @@
  *
  * A data de `validade` NÃO é mais consultada: não existe bloqueio por timestamp
  * nem "renovação automática por vencimento". Quem libera e quem bloqueia é o
- * booleano `ativa` do documento `licencas/{chave}`.
+ * booleano do documento `licencas/{chave}`.
+ *
+ * GRAFIA ACEITA: o campo pode estar escrito `ativa` (pt-BR) ou `activa`
+ * (pt-PT, grafia comum ao digitar no Firebase Console). Quando as duas existem
+ * no mesmo documento, vale o campo `ativa` (grafia oficial do sistema).
  */
 
 export interface LicenseDocData {
   ativa?: unknown;
+  /** Grafia alternativa aceita (com "c"), usada como reserva quando `ativa` não existe. */
+  activa?: unknown;
   bloqueada?: unknown;
   cliente?: unknown;
   nomeFantasia?: unknown;
@@ -27,7 +33,7 @@ export const MOTIVO_CHAVE_NAO_ENCONTRADA =
   'Chave de licença não encontrada no servidor. Confira a chave ou peça a liberação à Conta Bahia.';
 
 export const MOTIVO_LICENCA_DESATIVADA =
-  'Esta licença está desativada (ativa: false). Fale com a Conta Bahia para reativar este caixa.';
+  'Esta licença está desativada (campo ativa/activa não está como true). Fale com a Conta Bahia para reativar este caixa.';
 
 export const MOTIVO_LICENCA_BLOQUEADA =
   'Esta chave foi bloqueada pela administração. Entre em contato com a Conta Bahia.';
@@ -58,12 +64,17 @@ export function avaliarLicenca(data: LicenseDocData | null | undefined): License
 
   const motivo = textoOuVazio(data.motivoBloqueio);
 
-  // Chave explicitamente bloqueada (kill switch extra, mesmo com ativa: true)
+  // Chave explicitamente bloqueada (kill switch extra, mesmo com a licença ativa)
   if (isVerdadeiro(data.bloqueada)) {
     return { ok: false, reason: motivo || MOTIVO_LICENCA_BLOQUEADA };
   }
 
-  if (!isVerdadeiro(data.ativa)) {
+  // Aceita as duas grafias do campo. Se `ativa` existe no documento, ela manda;
+  // `activa` (com "c") só entra quando `ativa` está ausente. Um campo valendo
+  // `true` e o outro `false` no mesmo documento -> decide o `ativa` oficial.
+  const flagLicenca = data.ativa !== undefined ? data.ativa : data.activa;
+
+  if (!isVerdadeiro(flagLicenca)) {
     return { ok: false, reason: motivo || MOTIVO_LICENCA_DESATIVADA };
   }
 
