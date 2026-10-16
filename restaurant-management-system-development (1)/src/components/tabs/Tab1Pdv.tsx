@@ -320,7 +320,7 @@ export const Tab1Pdv: React.FC<Tab1PdvProps> = ({
       : { label: 'Livre', cls: 'bg-emerald-100 text-emerald-700 border-emerald-300' };
 
   return (
-    <div className="space-y-3">
+    <div className="cp-pdv space-y-3">
       {/* ================================ BARRA DO CAIXA ================================ */}
       <div className={cn('cp-card sticky top-0 z-20', panelPad)}>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
@@ -337,7 +337,7 @@ export const Tab1Pdv: React.FC<Tab1PdvProps> = ({
             </button>
             <div className="text-center px-1 min-w-[6.5rem]">
               <div className="cp-label cp-faint font-bold">Mesa / Comanda</div>
-              <div className="cp-text font-black leading-none text-2xl">
+              <div className="cp-text cp-pdv-main-table-number font-black leading-none">
                 {String(currentTableNum).padStart(2, '0')}
               </div>
             </div>
@@ -423,7 +423,7 @@ export const Tab1Pdv: React.FC<Tab1PdvProps> = ({
                 onClick={() => handleSelectTable(n)}
                 title={`Mesa ${n} — ${t && t.total > 0 ? formatCurrency(t.total) : 'sem itens'}`}
                 className={cn(
-                  'shrink-0 w-9 rounded-lg border font-extrabold text-xs transition-all relative',
+                  'cp-pdv-table-chip shrink-0 rounded-lg border font-extrabold transition-all relative',
                   compact ? 'py-1' : 'py-1.5',
                   isActive
                     ? 'bg-orange-600 border-orange-600 text-white'
@@ -464,9 +464,9 @@ export const Tab1Pdv: React.FC<Tab1PdvProps> = ({
             <button
               onClick={() => onPrintTableTicket(currentTableNum, currentItems)}
               disabled={currentItems.length === 0}
-              className="cp-btn bg-sky-600 text-white"
+              className="cp-btn cp-pdv-print-action bg-sky-600 text-white"
             >
-              <Printer className="w-4 h-4" />
+              <Printer className="w-5 h-5" />
               <span>Imprimir comanda</span>
             </button>
           )}
@@ -620,7 +620,7 @@ export const Tab1Pdv: React.FC<Tab1PdvProps> = ({
                     >
                       <Minus className="w-3.5 h-3.5" />
                     </button>
-                    <span className="cp-num w-7 text-center font-black cp-text">{item.quantidade}</span>
+                    <span className="cp-num w-11 text-center font-black cp-text">{item.quantidade}</span>
                     <button
                       onClick={() => handleUpdateItemQuantity(idx, 1)}
                       className="p-1 hover:opacity-70 rounded-r-lg cp-muted"
@@ -655,7 +655,7 @@ export const Tab1Pdv: React.FC<Tab1PdvProps> = ({
                   {a.mostrarUnitarioNoItem && (
                     <div className="hidden sm:block text-right shrink-0">
                       <div className="text-[9px] cp-faint uppercase font-bold">unit.</div>
-                      <div className="cp-small cp-muted font-mono">
+                      <div className="cp-small cp-pdv-unit-price cp-muted font-mono">
                         {formatCurrency(item.precoUnitario)}
                       </div>
                     </div>
@@ -690,7 +690,7 @@ export const Tab1Pdv: React.FC<Tab1PdvProps> = ({
                     onClick={() => setQuantity(q)}
                     aria-pressed={quantity === q}
                     className={cn(
-                      'w-9 py-1 rounded-lg text-sm font-black border transition',
+                      'cp-pdv-quick-qty rounded-lg font-black border transition',
                       quantity === q
                         ? 'bg-orange-600 border-orange-600 text-white'
                         : 'cp-chip'
@@ -714,7 +714,7 @@ export const Tab1Pdv: React.FC<Tab1PdvProps> = ({
                     aria-label="Quantidade do item"
                     value={quantity}
                     onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value, 10) || 1))}
-                    className="w-11 text-center cp-num font-black cp-text bg-transparent focus:outline-none"
+                    className="w-14 text-center cp-num font-black cp-text bg-transparent focus:outline-none"
                   />
                   <button
                     type="button"
@@ -823,7 +823,7 @@ export const Tab1Pdv: React.FC<Tab1PdvProps> = ({
                       {a.mostrarEstoque && (
                         <span
                           className={cn(
-                            'shrink-0 text-[9px] font-black px-1.5 py-0.5 rounded border',
+                            'cp-pdv-stock-badge shrink-0 font-black px-2 py-0.5 rounded border',
                             estoqueBaixo
                               ? 'bg-rose-100 text-rose-600 border-rose-200'
                               : 'cp-soft cp-faint border-transparent'
@@ -844,7 +844,7 @@ export const Tab1Pdv: React.FC<Tab1PdvProps> = ({
                         <span />
                       )}
                       {quantity > 1 && (
-                        <span className="text-[9px] font-black text-orange-600 bg-orange-100 rounded px-1 py-0.5">
+                        <span className="cp-pdv-selected-qty font-black text-orange-600 bg-orange-100 rounded px-1 py-0.5">
                           x{quantity}
                         </span>
                       )}
