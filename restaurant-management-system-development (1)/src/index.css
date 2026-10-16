@@ -197,6 +197,51 @@
     text-transform: uppercase;
   }
 
+  /* Números da frente de caixa maiores, sem alterar as outras abas. */
+  .cp-pdv .cp-num {
+    font-size: calc(1.1rem * var(--cp-fs));
+  }
+  .cp-pdv .cp-price {
+    font-size: calc(1.35rem * var(--cp-fs));
+    line-height: 1.1;
+  }
+  .cp-pdv .cp-pdv-main-table-number {
+    font-size: calc(2rem * var(--cp-fs));
+  }
+  .cp-pdv .cp-pdv-table-chip {
+    width: 2.75rem;
+    min-height: 2.5rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: calc(1rem * var(--cp-fs));
+    line-height: 1;
+  }
+  .cp-pdv .cp-pdv-quick-qty {
+    width: 2.75rem;
+    min-height: 2.5rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: calc(1rem * var(--cp-fs));
+    line-height: 1;
+  }
+  .cp-pdv .cp-pdv-stock-badge,
+  .cp-pdv .cp-pdv-selected-qty {
+    font-size: calc(0.72rem * var(--cp-fs));
+    line-height: 1.2;
+  }
+  .cp-pdv .cp-pdv-unit-price {
+    font-size: calc(0.82rem * var(--cp-fs));
+  }
+  .cp-pdv .cp-pdv-print-action {
+    min-width: 12rem;
+    min-height: 3.25rem;
+    padding: calc(0.85rem + 0.1rem * var(--cp-fs)) 1rem;
+    font-size: calc(1rem * var(--cp-fs));
+    gap: 0.55rem;
+  }
+
   /* Botão de ação grande (alvo de dedo/toque) */
   .cp-btn {
     border-radius: 0.75rem;
