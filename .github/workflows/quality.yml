@@ -1,0 +1,25 @@
+name: Testes e qualidade
+on:
+  push:
+    branches: [main, arena/86b95eed-comanda-pro]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: "restaurant-management-system-development (1)"
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: "restaurant-management-system-development (1)/package-lock.json"
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - run: npm audit --omit=dev --audit-level=high

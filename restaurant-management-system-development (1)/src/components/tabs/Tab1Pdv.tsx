@@ -16,6 +16,12 @@ import {
   ChevronLeft,
   ChevronRight,
   Keyboard,
+  Sandwich,
+  CupSoda,
+  IceCreamBowl,
+  CakeSlice,
+  CookingPot,
+  Salad,
 } from 'lucide-react';
 import { AppConfig, OrderItem, Product, Table, CaixaAppearance } from '../../types';
 import { formatCurrency } from '../../utils/formatters';
@@ -36,7 +42,7 @@ interface Tab1PdvProps {
     mesa: number | string;
     itens: OrderItem[];
     observacao?: string;
-  }) => void;
+  }) => boolean;
   onPrintTableTicket: (mesaNum: number | string, items: OrderItem[]) => void;
   onNavigateTab: (tabId: number) => void;
   onSaveTableObservation?: (tableNum: number, note: string) => void;
@@ -46,6 +52,15 @@ interface Tab1PdvProps {
   /** Ajustes rápidos de tema/letra/densidade, feitos direto no caixa. */
   onUpdateAppearance?: (patch: Partial<CaixaAppearance>) => void;
 }
+
+const categoryIcon = (category: string) => {
+  if (/bebida|suco/i.test(category)) return CupSoda;
+  if (/hambúrguer|salgado/i.test(category)) return Sandwich;
+  if (/açaí|sorvete/i.test(category)) return IceCreamBowl;
+  if (/doce/i.test(category)) return CakeSlice;
+  if (/porç/i.test(category)) return CookingPot;
+  return Salad;
+};
 
 const APARENCIA_PADRAO: CaixaAppearance = {
   tema: 'claro',
@@ -162,16 +177,19 @@ export const Tab1Pdv: React.FC<Tab1PdvProps> = ({
   };
 
   const handleStepTable = (delta: number) => {
-    const next = Math.min(50, Math.max(1, currentTableNum + delta));
+    const numbers = tables.map(t => t.numero).sort((a, b) => a - b);
+    const next = numbers[Math.min(numbers.length - 1, Math.max(0, numbers.indexOf(currentTableNum) + delta))] ?? currentTableNum;
     if (next !== currentTableNum) handleSelectTable(next);
   };
 
   const handleAddItem = (prod: Product, customQty?: number) => {
-    const qtyToAdd = customQty || quantity;
-    if (qtyToAdd <= 0) return;
+    const qtyToAdd = customQty ?? quantity;
+    if (!currentTable || !Number.isFinite(qtyToAdd) || qtyToAdd <= 0 || !Number.isFinite(prod.precoVenda) || prod.precoVenda < 0) return;
+    const reserved = tables.flatMap(t => t.itens).filter(i => i.productId === prod.id).reduce((sum, i) => sum + i.quantidade, 0);
+    if (!Number.isFinite(prod.estoque) || reserved + qtyToAdd > prod.estoque) { alert('Estoque insuficiente. Considere também os itens nas outras mesas abertas.'); return; }
 
     const existingIdx = currentItems.findIndex(
-      (it) => it.productId === prod.id && (!itemObservation || it.observacao === itemObservation)
+      (it) => it.productId === prod.id && (it.observacao || '') === itemObservation.trim()
     );
 
     let updatedItems: OrderItem[];
@@ -195,7 +213,7 @@ export const Tab1Pdv: React.FC<Tab1PdvProps> = ({
         precoUnitario: prod.precoVenda,
         quantidade: qtyToAdd,
         valorTotal: Number((qtyToAdd * prod.precoVenda).toFixed(2)),
-        observacao: itemObservation || undefined,
+        observacao: itemObservation.trim() || undefined,
         setor: prod.setor,
       };
       updatedItems = [...currentItems, newItem];
@@ -224,6 +242,9 @@ export const Tab1Pdv: React.FC<Tab1PdvProps> = ({
       return;
     }
 
+    const reserved = tables.flatMap(t => t.itens).filter(i => i.productId === item.productId).reduce((sum, i) => sum + i.quantidade, 0);
+    const product = products.find(p => p.id === item.productId);
+    if (delta > 0 && (!product || reserved + delta > product.estoque)) { alert('Estoque insuficiente.'); return; }
     updated[index] = {
       ...item,
       quantidade: newQty,
@@ -247,11 +268,12 @@ export const Tab1Pdv: React.FC<Tab1PdvProps> = ({
       alert('Nenhum item na comanda para enviar à produção!');
       return;
     }
-    onSendToKitchen({
+    const sent = onSendToKitchen({
       mesa: currentTableNum,
       itens: currentItems,
       observacao: `Pedido Mesa #${currentTableNum}`,
     });
+    if (!sent) return;
     setKitchenAlert(`Pedido da Mesa #${currentTableNum} enviado para a Cozinha!`);
     setTimeout(() => setKitchenAlert(null), 3500);
   };
@@ -306,7 +328,7 @@ export const Tab1Pdv: React.FC<Tab1PdvProps> = ({
     a.tamanhoItemCardapio === 'grande'
       ? 'grid-cols-1'
       : a.tamanhoItemCardapio === 'pequeno'
-      ? 'grid-cols-3'
+      ? 'grid-cols-2 xl:grid-cols-3'
       : 'grid-cols-2';
 
   const quickQty = a.quantidadesRapidas.length ? a.quantidadesRapidas : [1];
@@ -405,7 +427,7 @@ export const Tab1Pdv: React.FC<Tab1PdvProps> = ({
           className="mt-3 flex items-center gap-1 overflow-x-auto no-scrollbar pb-0.5"
           aria-label="Escolher mesa"
         >
-          {Array.from({ length: 50 }, (_, i) => i + 1).map((n) => {
+          {tables.map(table => table.numero).map((n) => {
             const t = tables.find((item) => item.numero === n);
             const isActive = n === currentTableNum;
             const status =
@@ -562,11 +584,11 @@ export const Tab1Pdv: React.FC<Tab1PdvProps> = ({
         {/* ---------------- Comanda da mesa ---------------- */}
         <div
           className={cn(
-            'lg:col-span-7 cp-card flex flex-col',
+            'lg:col-span-5 lg:order-2 min-w-0 cp-card cp-order-panel flex flex-col',
             compact ? 'min-h-[420px]' : 'min-h-[500px]'
           )}
         >
-          <div className={cn('flex items-center justify-between gap-3 border-b cp-line', panelPad)}>
+          <div className={cn('flex flex-wrap items-center justify-between gap-3 border-b cp-line', panelPad)}>
             <h3 className="font-bold cp-text flex items-center gap-2 text-sm">
               <Utensils className="w-4 h-4 cp-accent" />
               <span>Comanda da mesa {String(currentTableNum).padStart(2, '0')}</span>
@@ -585,7 +607,7 @@ export const Tab1Pdv: React.FC<Tab1PdvProps> = ({
                   onBlur={() => onSaveTableObservation?.(currentTableNum, mesaObservacaoInput)}
                   placeholder="Obs. da mesa (aniversário, alergia...)"
                   aria-label="Observação da mesa"
-                  className="cp-input w-40 sm:w-64 px-2.5 py-1 cp-small"
+                  className="cp-input w-full max-w-64 px-2.5 py-1 cp-small"
                 />
               </div>
             )}
@@ -595,7 +617,7 @@ export const Tab1Pdv: React.FC<Tab1PdvProps> = ({
             {currentItems.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center py-16 cp-faint text-center px-6">
                 <Utensils className="w-12 h-12 mb-3 opacity-40" />
-                <p className="cp-muted font-bold cp-item">Comanda vazia</p>
+                <p className="cp-muted font-extrabold text-xl">Caixa livre</p>
                 <p className="cp-small mt-1 max-w-sm">
                   Toque num produto ao lado, bipe o código de barras ou digite e aperte{' '}
                   <kbd className="cp-soft border cp-line rounded px-1 font-mono">Enter</kbd> para
@@ -607,7 +629,7 @@ export const Tab1Pdv: React.FC<Tab1PdvProps> = ({
                 <div
                   key={item.id || idx}
                   className={cn(
-                    'cp-row flex items-center gap-3 px-3 sm:px-4 hover:bg-orange-50/40 transition-colors',
+                    'cp-row flex flex-wrap xl:flex-nowrap items-center gap-2 px-3 hover:bg-orange-50/40 transition-colors',
                     compact ? 'py-1' : 'py-1.5'
                   )}
                 >
@@ -746,14 +768,18 @@ export const Tab1Pdv: React.FC<Tab1PdvProps> = ({
                 <div className="cp-total cp-text font-black font-mono">{formatCurrency(totalValue)}</div>
               </div>
             </div>
+            <button onClick={handlePay} disabled={!currentItems.length} className="cp-checkout-action cp-btn w-full mt-4 bg-orange-600 text-white justify-between">
+              <span>Ir para pagamento <span className="opacity-70 text-xs ml-1">F2</span></span>
+              <span className="font-mono">{formatCurrency(totalValue)}</span>
+            </button>
           </div>
         </div>
 
         {/* ---------------- Cardápio rápido ---------------- */}
-        <div className="lg:col-span-5 cp-card flex flex-col overflow-hidden">
+        <div className="lg:col-span-7 lg:order-1 min-w-0 cp-card flex flex-col overflow-hidden">
           <div className={cn('border-b cp-line space-y-2.5', panelPad)}>
             <div className="flex items-center justify-between">
-              <h3 className="font-bold cp-text text-sm">Cardápio</h3>
+              <div><p className="cp-label cp-accent font-bold mb-1">Escolha e adicione</p><h3 className="font-extrabold cp-text text-xl">Nosso cardápio</h3></div>
               <span className="cp-small cp-faint font-semibold">
                 {filteredProducts.length} {filteredProducts.length === 1 ? 'produto' : 'produtos'}
               </span>
@@ -791,10 +817,11 @@ export const Tab1Pdv: React.FC<Tab1PdvProps> = ({
                   key={cat}
                   onClick={() => setActiveCategory(cat)}
                   className={cn(
-                    'px-2.5 py-1 cp-small whitespace-nowrap shrink-0',
+                    'px-3 py-2 cp-small whitespace-nowrap shrink-0 flex items-center gap-2',
                     activeCategory === cat ? 'cp-chip cp-chip-on' : 'cp-chip'
                   )}
                 >
+                  {React.createElement(cat === 'TODOS' ? LayoutGrid : categoryIcon(cat), { className: 'w-4 h-4' })}
                   {cat === 'TODOS' ? 'Tudo' : cat}
                 </button>
               ))}
@@ -814,8 +841,13 @@ export const Tab1Pdv: React.FC<Tab1PdvProps> = ({
                     key={prod.id}
                     type="button"
                     onClick={() => handleAddItem(prod)}
-                    className="cp-tile text-left flex flex-col justify-between gap-1"
+                    disabled={prod.estoque <= 0}
+                    className="cp-tile cp-product-tile text-left flex flex-col justify-between gap-2 disabled:opacity-45 disabled:cursor-not-allowed"
                   >
+                    <div className="cp-product-art" aria-hidden="true">
+                      {React.createElement(categoryIcon(prod.setor), { className: 'w-12 h-12', strokeWidth: 1.4 })}
+                      <span className="cp-product-add"><Plus className="w-4 h-4" /></span>
+                    </div>
                     <div className="flex items-start justify-between gap-2">
                       <span className="cp-item cp-text font-bold leading-tight line-clamp-2 text-left">
                         {prod.descricao}

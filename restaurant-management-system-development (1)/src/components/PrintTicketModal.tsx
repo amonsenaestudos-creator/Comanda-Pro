@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { Printer, X, Check, Copy } from 'lucide-react';
 import { AppConfig, OrderItem, PaymentSplit } from '../types';
 import { formatCurrency, formatDateTime } from '../utils/formatters';
@@ -25,6 +26,7 @@ interface PrintTicketModalProps {
   troco?: number;
   codigoVenda?: string;
   observacoes?: string;
+  dataHora?: string;
 }
 
 export const PrintTicketModal: React.FC<PrintTicketModalProps> = ({
@@ -47,16 +49,23 @@ export const PrintTicketModal: React.FC<PrintTicketModalProps> = ({
   troco = 0,
   codigoVenda,
   observacoes,
+  dataHora,
 }) => {
   const [copied, setCopied] = React.useState(false);
 
+  const [paperWidth, setPaperWidth] = React.useState<'80' | '58'>(() => {
+    try { return localStorage.getItem('comandapro_paper_width') === '58' ? '58' : '80'; } catch { return '80'; }
+  });
+  const [openedAt, setOpenedAt] = React.useState(() => new Date().toISOString());
+  React.useEffect(() => { if (isOpen) setOpenedAt(new Date().toISOString()); }, [isOpen, codigoVenda]);
   if (!isOpen) return null;
+  const ticketDate = dataHora || openedAt;
 
   const handlePrint = () => {
     window.print();
   };
 
-  const copyAsText = () => {
+  const copyAsText = async () => {
     const textLines = [
       `========================================`,
       `       ${config.dadosEmpresa.nomeFantasia || config.dadosEmpresa.razaoSocial}`,
@@ -64,7 +73,8 @@ export const PrintTicketModal: React.FC<PrintTicketModalProps> = ({
       `     Tel: ${config.dadosEmpresa.telefone}`,
       `========================================`,
       `TIPO: ${ticketType === 'cupom_venda' ? 'COMPROVANTE DE VENDA' : ticketType === 'conferencia_mesa' ? 'CONFERÊNCIA DE MESA' : 'PEDIDO COZINHA'}`,
-      `DATA/HORA: ${formatDateTime(new Date())}`,
+      `DATA/HORA: ${formatDateTime(ticketDate)}`,
+      codigoVenda ? `CÓDIGO: ${codigoVenda}` : '',
       mesa !== undefined ? `MESA / COMANDA: ${mesa}` : '',
       atendente ? `ATENDENTE: ${atendente}` : '',
       clienteNome ? `CLIENTE: ${clienteNome}` : '',
@@ -73,7 +83,7 @@ export const PrintTicketModal: React.FC<PrintTicketModalProps> = ({
       `----------------------------------------`,
       ...itens.map(
         (it) =>
-          `${it.quantidade}x ${it.descricao.slice(0, 22).padEnd(23)} ${formatCurrency(it.valorTotal)}`
+          `${it.quantidade} ${it.unidade} x ${it.descricao} ${formatCurrency(it.valorTotal)}${it.observacao ? `\n  OBS: ${it.observacao}` : ''}`
       ),
       `----------------------------------------`,
       `SUBTOTAL: ${formatCurrency(subtotal)}`,
@@ -82,6 +92,7 @@ export const PrintTicketModal: React.FC<PrintTicketModalProps> = ({
       `TOTAL: ${formatCurrency(totalLiquido)}`,
       pagamentos.length > 0 ? `FORMA DE PAGAMENTO: ${pagamentos.map(p => `${p.metodo} (${formatCurrency(p.valor)})`).join(', ')}` : '',
       troco > 0 ? `TROCO: ${formatCurrency(troco)}` : '',
+      observacoes ? `OBS: ${observacoes}` : '',
       `========================================`,
       config.mensagemRodape,
       `Todos os direitos reservados: Conta Bahia Contabilidade - 71 2136-6312`,
@@ -89,14 +100,17 @@ export const PrintTicketModal: React.FC<PrintTicketModalProps> = ({
       .filter(Boolean)
       .join('\n');
 
-    navigator.clipboard.writeText(textLines);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    try {
+      await navigator.clipboard.writeText(textLines);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch { alert('Não foi possível copiar. Verifique as permissões do navegador.'); }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4 overflow-y-auto no-print">
-      <div className="cp-card shadow-2xl max-w-md w-full overflow-hidden flex flex-col duration-150">
+  return createPortal(
+    <div role="dialog" aria-modal="true" aria-label="Impressão de comprovante" className="print-modal-root cp-theme fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4 overflow-y-auto">
+      <style>{`@media print { @page { size: auto; margin: 0; } .printable-area { width: ${paperWidth}mm !important; } }`}</style>
+      <div className="cp-card print-modal-panel shadow-2xl max-w-md w-full overflow-hidden flex flex-col duration-150">
         {/* Modal Top bar */}
         <div className="bg-zinc-900 text-white px-4 py-3 flex items-center justify-between">
           <div className="flex items-center space-x-2">
@@ -118,7 +132,10 @@ export const PrintTicketModal: React.FC<PrintTicketModalProps> = ({
         {/* Action Toolbar */}
         <div className="bg-zinc-100 p-2.5 flex items-center justify-between gap-2 border-b border-zinc-200">
           <div className="text-xs text-zinc-600 font-medium">
-            Formato: 80mm / 58mm Térmica
+            <label>Bobina: <select aria-label="Largura da bobina" value={paperWidth} onChange={e => {
+              const width = e.target.value as '80' | '58'; setPaperWidth(width);
+              try { localStorage.setItem('comandapro_paper_width', width); } catch { /* preference only */ }
+            }} className="bg-white text-zinc-900 border rounded p-1"><option value="80">80 mm</option><option value="58">58 mm</option></select></label>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -139,8 +156,8 @@ export const PrintTicketModal: React.FC<PrintTicketModalProps> = ({
         </div>
 
         {/* Ticket Visual Container */}
-        <div className="p-4 bg-zinc-200 max-h-[70vh] overflow-y-auto flex justify-center">
-          <div className="printable-area bg-white text-zinc-950 p-4 rounded border border-dashed border-zinc-300 font-mono text-xs w-[320px]">
+        <div className="print-ticket-scroll p-4 bg-zinc-200 max-h-[70vh] overflow-y-auto flex justify-center">
+          <div style={{ width: `${paperWidth}mm`, maxWidth: '100%' }} className="printable-area shrink-0 bg-white text-zinc-950 p-4 rounded border border-dashed border-zinc-300 font-mono text-xs">
             {/* Header */}
             <div className="text-center pb-2 border-b border-dashed border-zinc-400">
               <div className="font-extrabold text-sm uppercase tracking-wide">
@@ -168,7 +185,7 @@ export const PrintTicketModal: React.FC<PrintTicketModalProps> = ({
                 {ticketType === 'cozinha' && '*** COMANDA DE COZINHA / PRODUÇÃO ***'}
               </div>
               <div className="flex justify-between">
-                <span>DATA: {formatDateTime(new Date())}</span>
+                <span>DATA: {formatDateTime(ticketDate)}</span>
               </div>
               {codigoVenda && (
                 <div className="flex justify-between">
@@ -193,7 +210,7 @@ export const PrintTicketModal: React.FC<PrintTicketModalProps> = ({
               {clienteNome && (
                 <div className="flex justify-between">
                   <span>CLIENTE:</span>
-                  <span className="font-medium truncate max-w-[170px]">{clienteNome}</span>
+                  <span className="font-medium text-right break-words max-w-[65%]">{clienteNome}</span>
                 </div>
               )}
               {clienteTelefone && (
@@ -218,14 +235,14 @@ export const PrintTicketModal: React.FC<PrintTicketModalProps> = ({
               <div className="space-y-1.5">
                 {itens.map((item, idx) => (
                   <div key={idx} className="text-[11px] leading-tight">
-                    <div className="flex justify-between items-baseline font-medium">
+                    <div className="ticket-item flex justify-between items-baseline gap-2 font-medium">
                       <span>
                         {item.quantidade}x {item.descricao}
                       </span>
-                      <span>{formatCurrency(item.valorTotal)}</span>
+                      <span className="shrink-0 whitespace-nowrap">{formatCurrency(item.valorTotal)}</span>
                     </div>
                     <div className="text-[10px] text-zinc-500 pl-4">
-                      {item.quantidade} UN x {formatCurrency(item.precoUnitario)}
+                      {item.quantidade} {item.unidade} x {formatCurrency(item.precoUnitario)}
                     </div>
                     {item.observacao && (
                       <div className="text-[10px] text-rose-700 font-semibold pl-4">
@@ -321,6 +338,7 @@ export const PrintTicketModal: React.FC<PrintTicketModalProps> = ({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

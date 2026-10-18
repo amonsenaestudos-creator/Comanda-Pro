@@ -12,7 +12,7 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { AppConfig, Sale } from '../../types';
-import { formatCurrency, formatDateTime } from '../../utils/formatters';
+import { formatCurrency, formatDateTime, localDayKey } from '../../utils/formatters';
 
 interface Tab3RelatoriosProps {
   sales: Sale[];
@@ -38,8 +38,8 @@ export const Tab3Relatorios: React.FC<Tab3RelatoriosProps> = ({
   const filteredSales = sales.filter((sale) => {
     // Date filter
     if (filterDate) {
-      const sDate = sale.dataHora.slice(0, 10);
-      if (sDate !== filterDate) return false;
+      const sDate = localDayKey(sale.dataHora);
+      if (sDate !== filterDate.replace(/-/g, '')) return false;
     }
 
     // Payment method filter
@@ -72,7 +72,7 @@ export const Tab3Relatorios: React.FC<Tab3RelatoriosProps> = ({
   const handleClearConfirm = () => {
     if (
       window.confirm(
-        'ATENÇÃO: Deseja ZERAR O CAIXA / INICIAR NOVO DIA?\nIsso resetará o histórico de vendas diário para uma nova jornada de trabalho.'
+        'Deseja baixar um backup completo deste caixa? O histórico não será apagado. Para consultar somente hoje, use o filtro de data.'
       )
     ) {
       onClearDailySales();
@@ -80,14 +80,14 @@ export const Tab3Relatorios: React.FC<Tab3RelatoriosProps> = ({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 cp-sales-report">
       {/* Top Banner and Quick Shortcuts */}
       <div className="cp-card p-4">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div>
             <h2 className="text-base font-extrabold text-zinc-900 flex items-center gap-2">
               <FileText className="w-5 h-5 text-orange-600" />
-              <span>Relatórios de Vendas & Fechamento Fiscal</span>
+              <span>Relatórios de Vendas & Fechamento do Caixa</span>
             </h2>
             <p className="text-xs text-zinc-500">
               Histórico completo de pedidos, auditoria de pagamentos e apuração de tributos (Alíquota:{' '}
@@ -111,7 +111,7 @@ export const Tab3Relatorios: React.FC<Tab3RelatoriosProps> = ({
               className="px-3.5 py-2 text-xs font-bold rounded-lg bg-rose-600 hover:bg-rose-700 text-white flex items-center gap-1.5 transition"
             >
               <AlertTriangle className="w-4 h-4" />
-              <span>Zerar Caixa / Novo Dia</span>
+              <span>Backup do Caixa</span>
             </button>
           </div>
         </div>

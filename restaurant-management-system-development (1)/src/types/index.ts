@@ -48,6 +48,7 @@ export interface Table {
   abertura?: string;
   total: number;
   observacaoMesa?: string;
+  cozinhaEnviada?: Record<string, number>;
 }
 
 export interface PaymentSplit {

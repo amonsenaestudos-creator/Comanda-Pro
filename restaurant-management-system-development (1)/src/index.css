@@ -418,28 +418,55 @@
 }
 
 /* Thermal printer print media rules */
+/* The modal is a portal directly under body: no hidden ancestor or clipped scroll area. */
 @media print {
-  body * {
-    visibility: hidden;
+  html, body { margin: 0 !important; padding: 0 !important; background: white !important; height: auto !important; }
+  body:has(.print-modal-root) > :not(.print-modal-root) { display: none !important; }
+  .print-modal-root, .print-modal-panel, .print-ticket-scroll {
+    display: block !important; position: static !important; overflow: visible !important;
+    width: auto !important; max-width: none !important; height: auto !important;
+    max-height: none !important; padding: 0 !important; margin: 0 !important;
+    border: 0 !important; box-shadow: none !important; background: white !important;
+    backdrop-filter: none !important; border-radius: 0 !important;
   }
-  .printable-area,
-  .printable-area * {
-    visibility: visible;
-    background: #fff !important;
-    color: #000 !important;
+  .print-modal-panel > :not(.print-ticket-scroll) { display: none !important; }
+  .printable-area, .printable-area * {
+    color: black !important; background: white !important; text-shadow: none !important;
+    box-shadow: none !important; overflow-wrap: anywhere;
   }
   .printable-area {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 80mm;
-    margin: 0;
-    padding: 2mm;
-    font-family: 'JetBrains Mono', monospace, monospace;
-    font-size: 11px;
-    line-height: 1.3;
+    box-sizing: border-box; margin: 0 !important; padding: 2mm !important;
+    border: none !important; border-radius: 0 !important;
+    font-family: monospace; font-size: 11px; line-height: 1.3;
   }
-  .no-print {
-    display: none !important;
-  }
+  .ticket-item { break-inside: avoid; }
+  .no-print { display: none !important; }
+  body:not(:has(.print-modal-root)) header, body:not(:has(.print-modal-root)) aside,
+  body:not(:has(.print-modal-root)) footer, .cp-sales-report button, .cp-sales-report input,
+  .cp-sales-report select { display: none !important; }
+  body:not(:has(.print-modal-root)) main { overflow: visible !important; }
+  .cp-sales-report { color: black !important; background: white !important; }
+}
+
+/* Cardápio + comanda: composição inspirada nos painéis de restaurante de referência. */
+.cp-pdv { --cp-radius: 1rem; }
+.cp-pdv .cp-card { box-shadow: 0 4px 20px #00000004; }
+.cp-product-tile { padding: 0.8rem; min-height: 190px; }
+.cp-product-art {
+  position: relative; display: flex; align-items: center; justify-content: center;
+  min-height: 92px; margin-bottom: 0.3rem; border-radius: 0.65rem;
+  color: var(--cp-accent);
+  background: radial-gradient(ellipse at 50% 80%, #fb923c20, transparent 70%), var(--cp-surface-3);
+}
+.cp-product-add {
+  position: absolute; bottom: 8px; right: 8px; border-radius: 50%; padding: 6px;
+  color: white; background: #ea580c;
+}
+.cp-order-panel { align-self: start; }
+.cp-checkout-action { min-height: 52px; border-radius: 0.75rem; }
+@media (min-width: 1024px) {
+  .cp-order-panel { position: sticky; top: 4.5rem; }
+}
+@media (max-width: 640px) {
+  .cp-pdv .cp-total { font-size: calc(1.8rem * var(--cp-fs)); }
 }
