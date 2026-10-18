@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   CreditCard,
   QrCode,
@@ -34,6 +34,9 @@ import {
   PaymentSplit,
   Sale,
 } from '../../types';
+import QRCode from 'qrcode';
+import { buildPixPayload } from '../../utils/pix';
+import { cents, money, orderSubtotal, validatePayments } from '../../utils/checkout';
 import { formatCurrency } from '../../utils/formatters';
 
 interface Tab2PagamentoProps {
@@ -45,7 +48,7 @@ interface Tab2PagamentoProps {
   } | null;
   employees: Employee[];
   config: AppConfig;
-  onFinishSale: (sale: Sale) => void;
+  onFinishSale: (sale: Sale) => boolean;
   onNavigateTab: (tabId: number) => void;
   onOpenReceiptPrint: (sale: Sale) => void;
 }
@@ -68,7 +71,7 @@ export const Tab2Pagamento: React.FC<Tab2PagamentoProps> = ({
   // Service charge
   const [hasServiceCharge, setHasServiceCharge] = useState<boolean>(true);
   const [serviceChargePercent, setServiceChargePercent] = useState<number>(
-    config.taxaServicoPadraoPercent || 10
+    config.taxaServicoPadraoPercent ?? 10
   );
 
   // Discount
@@ -83,9 +86,23 @@ export const Tab2Pagamento: React.FC<Tab2PagamentoProps> = ({
   // PIX QR Code Modal
   const [isPixModalOpen, setIsPixModalOpen] = useState(false);
   const [pixCopied, setPixCopied] = useState(false);
+  const [pixImage, setPixImage] = useState('');
+  const [pixPayload, setPixPayload] = useState('');
+  const [pixError, setPixError] = useState('');
+  const finishing = useRef(false);
 
   // Finished sale state to allow printing receipt right after
   const [lastFinishedSale, setLastFinishedSale] = useState<Sale | null>(null);
+
+  // Never carry payments or customer details to another order.
+  useEffect(() => {
+    if (!currentOrder) return;
+    setSplits([]); setCashGiven(''); setDiscountPercent(0);
+    setClienteNome(''); setClienteDoc(''); setLastFinishedSale(null);
+    setHasServiceCharge(true);
+    setServiceChargePercent(config.taxaServicoPadraoPercent ?? 10);
+    finishing.current = false;
+  }, [currentOrder]);
 
   // Sync order data when opened
   useEffect(() => {
@@ -97,7 +114,7 @@ export const Tab2Pagamento: React.FC<Tab2PagamentoProps> = ({
     }
   }, [currentOrder]);
 
-  const subtotal = currentOrder ? currentOrder.subtotal : 0;
+  const subtotal = currentOrder ? orderSubtotal(currentOrder.itens) : 0;
   const taxaServicoValor = hasServiceCharge
     ? Number(((subtotal * serviceChargePercent) / 100).toFixed(2))
     : 0;
@@ -106,8 +123,10 @@ export const Tab2Pagamento: React.FC<Tab2PagamentoProps> = ({
   const descontoValor = Number(((baseWithService * discountPercent) / 100).toFixed(2));
   const totalLiquido = Number(Math.max(0, baseWithService - descontoValor).toFixed(2));
 
+  useEffect(() => { setSplits([]); setCashGiven(''); }, [hasServiceCharge, serviceChargePercent, discountPercent]);
+
   // Payment totals
-  const totalPaid = splits.reduce((acc, s) => acc + s.valor, 0);
+  const totalPaid = money(splits.reduce((acc, s) => acc + s.valor, 0));
   const remaining = Number(Math.max(0, totalLiquido - totalPaid).toFixed(2));
 
   // Auto fill inputAmount with remaining
@@ -125,7 +144,7 @@ export const Tab2Pagamento: React.FC<Tab2PagamentoProps> = ({
     .reduce((acc, s) => acc + s.valor, 0);
   const cashGivenNum = parseFloat(cashGiven) || 0;
   const trocoCalculado =
-    cashGivenNum > cashPaid ? Number((cashGivenNum - cashPaid).toFixed(2)) : 0;
+    cashPaid > 0 && cashGivenNum > cashPaid ? Number((cashGivenNum - cashPaid).toFixed(2)) : 0;
 
   const paymentMethods: { method: PaymentMethod; Icon: React.ElementType }[] = [
     { method: 'PIX', Icon: QrCode },
@@ -145,22 +164,16 @@ export const Tab2Pagamento: React.FC<Tab2PagamentoProps> = ({
 
   const handleAddSplit = () => {
     const val = parseFloat(inputAmount);
-    if (isNaN(val) || val <= 0) {
+    if (isNaN(val) || cents(val) <= 0) {
       alert('Informe um valor de pagamento válido!');
       return;
     }
 
-    if (val > remaining + 0.01) {
-      if (selectedMethod !== 'Dinheiro') {
-        alert(
-          `O valor informado (${formatCurrency(val)}) ultrapassa o saldo restante (${formatCurrency(remaining)}). Para dinheiro com troco, use o campo de troco.`
-        );
-        return;
-      }
+    if (!Number.isFinite(val) || cents(val) > cents(remaining) || remaining <= 0) {
+      alert('Informe somente o saldo a pagar. Para dinheiro entregue a mais, use o campo de troco.');
+      return;
     }
-
-    const actualAdd = Math.min(val, remaining);
-    setSplits([...splits, { metodo: selectedMethod, valor: actualAdd }]);
+    setSplits(prev => [...prev, { metodo: selectedMethod, valor: money(val) }]);
   };
 
   const handleRemoveSplit = (idx: number) => {
@@ -181,22 +194,19 @@ export const Tab2Pagamento: React.FC<Tab2PagamentoProps> = ({
       return;
     }
 
-    if (remaining > 0.01) {
-      alert(
-        `Ainda resta ${formatCurrency(remaining)} a ser pago! Adicione os pagamentos correspondentes.`
-      );
-      return;
-    }
-
-    const saleId = `VND-${Date.now().toString().slice(-6)}`;
+    if (finishing.current) return;
+    const paymentError = validatePayments(totalLiquido, splits, cashGiven === '' ? undefined : Number(cashGiven));
+    if (paymentError) { alert(paymentError); return; }
+    if (discountPercent > (config.descontoMaximoPercent ?? 15)) { alert('Desconto acima do limite configurado.'); return; }
+    const saleId = `VND-${crypto.randomUUID()}`;
     const impostos = Number(
-      ((totalLiquido * (config.aliquotaImpostoPercent || 5.5)) / 100).toFixed(2)
+      ((totalLiquido * (config.aliquotaImpostoPercent ?? 5.5)) / 100).toFixed(2)
     );
 
     const newSale: Sale = {
       id: saleId,
       dataHora: new Date().toISOString(),
-      mesa: comandaNumero ? Number(comandaNumero) || comandaNumero : currentOrder.mesa,
+      mesa: currentOrder.mesa,
       tipoAtendimento:
         typeof currentOrder.mesa === 'number'
           ? 'Mesa'
@@ -218,15 +228,33 @@ export const Tab2Pagamento: React.FC<Tab2PagamentoProps> = ({
       impostosEstimados: impostos,
     };
 
-    onFinishSale(newSale);
-    setLastFinishedSale(newSale);
+    finishing.current = true;
+    if (onFinishSale(newSale)) {
+      setLastFinishedSale(newSale);
+      setSplits([]); setCashGiven('');
+    } else { finishing.current = false; }
   };
 
-  const copyPixCode = () => {
-    const pixPayload = `00020126580014br.gov.bcb.pix0136${config.chavePix || 'financeiro@comandapro.com.br'}520400005303986540${totalLiquido.toFixed(2)}5802BR5925${config.dadosEmpresa.nomeFantasia.slice(0, 25)}6008SALVADOR62070503***6304`;
-    navigator.clipboard.writeText(pixPayload);
-    setPixCopied(true);
-    setTimeout(() => setPixCopied(false), 2000);
+  const pixAmount = Math.min(Number(inputAmount) || remaining, remaining);
+  useEffect(() => {
+    if (!isPixModalOpen) return;
+    let cancelled = false;
+    setPixError(''); setPixImage(''); setPixPayload('');
+    try {
+      const payload = buildPixPayload(config.chavePix, config.dadosEmpresa.nomeFantasia, config.dadosEmpresa.cidade, pixAmount);
+      QRCode.toDataURL(payload, { width: 256, margin: 4, errorCorrectionLevel: 'M' }).then(image => {
+        if (!cancelled) { setPixImage(image); setPixPayload(payload); }
+      }).catch(() => { if (!cancelled) setPixError('Não foi possível gerar o QR Code.'); });
+    } catch (error) { setPixError((error as Error).message); }
+    return () => { cancelled = true; };
+  }, [isPixModalOpen, pixAmount, config.chavePix, config.dadosEmpresa.nomeFantasia, config.dadosEmpresa.cidade]);
+
+  const copyPixCode = async () => {
+    try {
+      await navigator.clipboard.writeText(pixPayload);
+      setPixCopied(true);
+      setTimeout(() => setPixCopied(false), 2000);
+    } catch { alert('Não foi possível copiar. Verifique as permissões do navegador.'); }
   };
 
   // If no active order
@@ -240,7 +268,8 @@ export const Tab2Pagamento: React.FC<Tab2PagamentoProps> = ({
         <p className="text-xs text-zinc-500 mb-6">
           Abra a Frente de Caixa (ou o mapa de Mesas), lance os itens e toque em <strong>Pagar</strong>.
         </p>
-        <div className="flex justify-center gap-3">
+        <div className="flex justify-center gap-3 flex-wrap">
+          {lastFinishedSale && <button onClick={() => onOpenReceiptPrint(lastFinishedSale)} className="cp-btn bg-sky-600 text-white">Reimprimir última venda</button>}
           <button
             onClick={() => onNavigateTab(1)}
             className="px-4 py-2 text-xs font-bold rounded-lg bg-orange-600 hover:bg-orange-700 text-white flex items-center gap-1.5"
@@ -367,7 +396,7 @@ export const Tab2Pagamento: React.FC<Tab2PagamentoProps> = ({
                       max="30"
                       value={serviceChargePercent}
                       onChange={(e) =>
-                        setServiceChargePercent(Math.max(0, parseFloat(e.target.value) || 0))
+                        setServiceChargePercent(Math.min(30, Math.max(0, parseFloat(e.target.value) || 0)))
                       }
                       className="w-14 px-1.5 py-0.5 text-center bg-white border border-zinc-300 rounded text-xs font-bold"
                     />
@@ -389,10 +418,10 @@ export const Tab2Pagamento: React.FC<Tab2PagamentoProps> = ({
                 </div>
                 <div className="flex items-center justify-between text-[11px]">
                   <span className="text-zinc-500">
-                    Máx: {config.descontoMaximoPercent || 15}%
+                    Máx: {config.descontoMaximoPercent ?? 15}%
                   </span>
                   <div className="flex items-center gap-1">
-                    {[0, 5, 10, config.descontoMaximoPercent || 15].map((pct) => (
+                    {Array.from(new Set([0, 5, 10, config.descontoMaximoPercent ?? 15])).filter(pct => pct <= (config.descontoMaximoPercent ?? 15)).map((pct) => (
                       <button
                         key={pct}
                         type="button"
@@ -696,50 +725,17 @@ export const Tab2Pagamento: React.FC<Tab2PagamentoProps> = ({
               Escaneie o QR Code ou copie o código Pix abaixo
             </p>
 
-            {/* Generated SVG QR Code representation */}
-            <div className="p-4 bg-zinc-100 rounded-xl inline-block mx-auto mb-3 border border-zinc-300">
-              <svg
-                className="w-48 h-48 mx-auto"
-                viewBox="0 0 100 100"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <rect width="100" height="100" fill="white" />
-                {/* QR Marker 1 */}
-                <rect x="10" y="10" width="25" height="25" fill="#0f172a" />
-                <rect x="14" y="14" width="17" height="17" fill="white" />
-                <rect x="18" y="18" width="9" height="9" fill="#0f172a" />
-                {/* QR Marker 2 */}
-                <rect x="65" y="10" width="25" height="25" fill="#0f172a" />
-                <rect x="69" y="14" width="17" height="17" fill="white" />
-                <rect x="73" y="18" width="9" height="9" fill="#0f172a" />
-                {/* QR Marker 3 */}
-                <rect x="10" y="65" width="25" height="25" fill="#0f172a" />
-                <rect x="14" y="69" width="17" height="17" fill="white" />
-                <rect x="18" y="73" width="9" height="9" fill="#0f172a" />
-                {/* Simulated Data matrix */}
-                <rect x="42" y="12" width="6" height="6" fill="#0f172a" />
-                <rect x="52" y="12" width="6" height="6" fill="#0f172a" />
-                <rect x="42" y="24" width="6" height="12" fill="#0f172a" />
-                <rect x="52" y="30" width="12" height="6" fill="#0f172a" />
-                <rect x="12" y="42" width="18" height="6" fill="#0f172a" />
-                <rect x="36" y="42" width="6" height="18" fill="#0f172a" />
-                <rect x="48" y="48" width="14" height="14" fill="#0f172a" />
-                <rect x="68" y="42" width="18" height="6" fill="#0f172a" />
-                <rect x="72" y="54" width="14" height="12" fill="#0f172a" />
-                <rect x="42" y="68" width="12" height="12" fill="#0f172a" />
-                <rect x="60" y="74" width="12" height="12" fill="#0f172a" />
-                <rect x="78" y="74" width="8" height="12" fill="#0f172a" />
-              </svg>
-            </div>
+            {pixError ? <p role="alert" className="text-rose-600 text-sm my-4">{pixError}</p> :
+              pixImage ? <img src={pixImage} alt="QR Code PIX para pagamento" className="w-64 mx-auto mb-3" /> : <p>Gerando QR Code…</p>}
+            <p className="text-xs text-zinc-500 mb-3">Confirme o recebimento no banco antes de registrar a parcela. O sistema não confirma PIX automaticamente.</p>
 
             <div className="bg-zinc-100 p-2.5 rounded-lg mb-4 text-left">
-              <div className="text-[11px] text-zinc-500 font-semibold">Valor exato a pagar:</div>
+              <div className="text-[11px] text-zinc-500 font-semibold">Valor desta parcela PIX:</div>
               <div className="text-xl font-extrabold text-teal-700 font-mono">
-                {formatCurrency(totalLiquido)}
+                {formatCurrency(pixAmount)}
               </div>
               <div className="text-[10px] text-zinc-500 mt-1 truncate">
-                Chave: {config.chavePix || 'financeiro@comandapro.com.br'}
+                Chave: {config.chavePix}
               </div>
             </div>
 
@@ -747,6 +743,7 @@ export const Tab2Pagamento: React.FC<Tab2PagamentoProps> = ({
               <button
                 type="button"
                 onClick={copyPixCode}
+                disabled={!pixPayload}
                 className="w-full py-2.5 px-4 text-xs font-bold rounded-xl bg-teal-600 hover:bg-teal-700 text-white flex items-center justify-center gap-2 transition"
               >
                 {pixCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}

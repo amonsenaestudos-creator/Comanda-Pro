@@ -144,3 +144,15 @@ Atalhos de teclado na Frente de Caixa:
 
 > Ao ativar o **Modo Caixa**, se o operador estiver em uma tela que foi
 > escondida, o sistema volta sozinho para a Frente de Caixa.
+
+---
+
+## Revisão de vendas e impressão (18/10/2026)
+
+- [Falhas corrigidas, validação e limitações](../docs/REVISAO-VENDAS.md)
+- [Como consultar/restaurar commits e versões anteriores](../docs/VOLTAR-VERSOES.md)
+
+Validação local: `npm test`, `npm run typecheck`, `npm run build` e `npm audit`.
+A impressão permite selecionar bobina de 58 ou 80 mm; configure o mesmo papel no driver.
+Em **Vendas & Fechamento → Backup do Caixa**, o histórico é preservado e um JSON é baixado.
+Instalações novas não geram vendas ou pedidos fictícios. Revise os cadastros de exemplo antes de operar.

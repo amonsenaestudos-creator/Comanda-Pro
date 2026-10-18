@@ -32,6 +32,7 @@ import {
   resolveHiddenTabs,
   setStored,
 } from './utils/storage';
+import { completeSale, orderSubtotal } from './utils/checkout';
 import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
 import { Footer } from './components/Footer';
@@ -54,6 +55,19 @@ import { Tab11ResumoRapido } from './components/tabs/Tab11ResumoRapido';
 
 export function App() {
   const accessLicense = useAccessLicense();
+
+  const [storageError, setStorageError] = useState(false);
+  const [externalChange, setExternalChange] = useState(false);
+  useEffect(() => {
+    const onError = () => setStorageError(true);
+    const onStorage = (e: StorageEvent) => { if (e.key === STORAGE_KEYS.OPERATIONS || e.key === null) setExternalChange(true); };
+    window.addEventListener('comandapro-storage-error', onError);
+    window.addEventListener('storage', onStorage);
+    return () => { window.removeEventListener('comandapro-storage-error', onError); window.removeEventListener('storage', onStorage); };
+  }, []);
+
+  // A single snapshot prevents a completed sale from being stored without its stock/table update.
+  const [initialOperations] = useState(() => getStored<{ products: Product[]; tables: Table[]; sales: Sale[] } | null>(STORAGE_KEYS.OPERATIONS, null));
 
   // Application State
   const [activeTab, setActiveTab] = useState<number>(1);
@@ -106,7 +120,7 @@ export function App() {
   ]);
 
   const [products, setProducts] = useState<Product[]>(() =>
-    getStored<Product[]>(STORAGE_KEYS.PRODUCTS, INITIAL_PRODUCTS)
+    initialOperations?.products ?? getStored<Product[]>(STORAGE_KEYS.PRODUCTS, INITIAL_PRODUCTS)
   );
 
   const [sectors, setSectors] = useState<string[]>(() =>
@@ -114,11 +128,11 @@ export function App() {
   );
 
   const [tables, setTables] = useState<Table[]>(() =>
-    getStored<Table[]>(STORAGE_KEYS.TABLES, createInitialTables())
+    initialOperations?.tables ?? getStored<Table[]>(STORAGE_KEYS.TABLES, createInitialTables())
   );
 
   const [sales, setSales] = useState<Sale[]>(() =>
-    getStored<Sale[]>(STORAGE_KEYS.SALES, createInitialSales())
+    initialOperations?.sales ?? getStored<Sale[]>(STORAGE_KEYS.SALES, createInitialSales())
   );
 
   const [customers, setCustomers] = useState<Customer[]>(() =>
@@ -173,6 +187,7 @@ export function App() {
     troco?: number;
     codigoVenda?: string;
     observacoes?: string;
+    dataHora?: string;
   }>({
     isOpen: false,
     ticketType: 'cupom_venda',
@@ -181,28 +196,43 @@ export function App() {
     totalLiquido: 0,
   });
 
+  useEffect(() => {
+    if (!externalChange) setStored(STORAGE_KEYS.OPERATIONS, { products, tables, sales });
+  }, [products, tables, sales, externalChange]);
+
+  const navigateTab = (tabId: number) => {
+    if (tabId === 2 && activeTab !== 2) {
+      const table = tables.find(t => t.numero === selectedTableNumber);
+      setCurrentOrderForPayment(table?.itens.length ? {
+        mesa: table.numero, itens: table.itens, subtotal: orderSubtotal(table.itens), atendente: table.garcom,
+      } : null);
+    }
+    setActiveTab(tabId);
+  };
+
   // LocalStorage sync effects
-  useEffect(() => setStored(STORAGE_KEYS.CONFIG, config), [config]);
-  useEffect(() => setStored(STORAGE_KEYS.PRODUCTS, products), [products]);
-  useEffect(() => setStored(STORAGE_KEYS.SECTORS, sectors), [sectors]);
-  useEffect(() => setStored(STORAGE_KEYS.TABLES, tables), [tables]);
-  useEffect(() => setStored(STORAGE_KEYS.SALES, sales), [sales]);
-  useEffect(() => setStored(STORAGE_KEYS.CUSTOMERS, customers), [customers]);
-  useEffect(() => setStored(STORAGE_KEYS.DELIVERERS, deliverers), [deliverers]);
-  useEffect(() => setStored(STORAGE_KEYS.EMPLOYEES, employees), [employees]);
-  useEffect(() => setStored(STORAGE_KEYS.SUPPLIERS, suppliers), [suppliers]);
-  useEffect(() => setStored(STORAGE_KEYS.APPS, apps), [apps]);
-  useEffect(() => setStored(STORAGE_KEYS.KITCHEN_ORDERS, kitchenOrders), [kitchenOrders]);
+  useEffect(() => { if (!externalChange) setStored(STORAGE_KEYS.CONFIG, config); }, [config, externalChange]);
+  useEffect(() => { if (!externalChange) setStored(STORAGE_KEYS.PRODUCTS, products); }, [products, externalChange]);
+  useEffect(() => { if (!externalChange) setStored(STORAGE_KEYS.SECTORS, sectors); }, [sectors, externalChange]);
+  useEffect(() => { if (!externalChange) setStored(STORAGE_KEYS.TABLES, tables); }, [tables, externalChange]);
+  useEffect(() => { if (!externalChange) setStored(STORAGE_KEYS.SALES, sales); }, [sales, externalChange]);
+  useEffect(() => { if (!externalChange) setStored(STORAGE_KEYS.CUSTOMERS, customers); }, [customers, externalChange]);
+  useEffect(() => { if (!externalChange) setStored(STORAGE_KEYS.DELIVERERS, deliverers); }, [deliverers, externalChange]);
+  useEffect(() => { if (!externalChange) setStored(STORAGE_KEYS.EMPLOYEES, employees); }, [employees, externalChange]);
+  useEffect(() => { if (!externalChange) setStored(STORAGE_KEYS.SUPPLIERS, suppliers); }, [suppliers, externalChange]);
+  useEffect(() => { if (!externalChange) setStored(STORAGE_KEYS.APPS, apps); }, [apps, externalChange]);
+  useEffect(() => { if (!externalChange) setStored(STORAGE_KEYS.KITCHEN_ORDERS, kitchenOrders); }, [kitchenOrders, externalChange]);
 
   // Global Keyboard Shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (printModalState.isOpen && e.key !== 'Escape') return;
       if (e.key === 'F1') {
         e.preventDefault();
         setActiveTab(1);
       } else if (e.key === 'F2') {
         e.preventDefault();
-        setActiveTab(2);
+        navigateTab(2);
       } else if (e.key === 'F11') {
         e.preventDefault();
         setActiveTab(11);
@@ -214,7 +244,7 @@ export function App() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [printModalState.isOpen]);
+  }, [printModalState.isOpen, tables, selectedTableNumber, activeTab]);
 
   // Save items in table
   const handleSaveTableItems = (
@@ -232,7 +262,8 @@ export function App() {
             total,
             status: items.length > 0 ? (t.status === 'livre' ? 'ocupada' : t.status) : 'livre',
             garcom: waiterName || t.garcom || employees[0]?.nome,
-            abertura: t.abertura || (items.length > 0 ? new Date().toISOString() : undefined),
+            abertura: items.length > 0 ? (t.abertura || new Date().toISOString()) : undefined,
+            ...(items.length === 0 ? { garcom: undefined, cliente: undefined, observacaoMesa: undefined } : {}),
           };
         }
         return t;
@@ -249,6 +280,8 @@ export function App() {
 
   // Release table completely
   const handleReleaseTable = (tableNum: number) => {
+    const table = tables.find(t => t.numero === tableNum);
+    if (table?.itens.length) { alert('Esta mesa tem itens não pagos. Use Fechar / Pagar ou cancele os itens no caixa antes de liberar.'); return; }
     setTables((prev) =>
       prev.map((t) =>
         t.numero === tableNum
@@ -282,19 +315,23 @@ export function App() {
   };
 
   // Finish Sale
-  const handleFinishSale = (newSale: Sale) => {
-    setSales((prev) => [newSale, ...prev]);
-
-    // If sale was associated with a table (1 to 50), release the table
-    if (typeof newSale.mesa === 'number') {
-      handleReleaseTable(newSale.mesa);
+  const saleInProgress = useRef(false);
+  const handleFinishSale = (newSale: Sale): boolean => {
+    if (saleInProgress.current || externalChange) {
+      alert('Outra aba alterou o caixa ou uma venda está em andamento. Recarregue antes de continuar.');
+      return false;
     }
-
-    // Open receipt modal automatically for confirmation & print
-    handleOpenReceiptPrint(newSale);
-
-    // Reset current order
-    setCurrentOrderForPayment(null);
+    saleInProgress.current = true;
+    try {
+      const next = completeSale(newSale, sales, tables, products);
+      // Do not release a table or report success unless the entire transaction is persisted.
+      if (!setStored(STORAGE_KEYS.OPERATIONS, next)) throw new Error('Não foi possível salvar a venda. A mesa não foi liberada. Faça backup e verifique o armazenamento do navegador.');
+      setSales(next.sales); setTables(next.tables); setProducts(next.products);
+      handleOpenReceiptPrint(newSale);
+      setCurrentOrderForPayment(null);
+      return true;
+    } catch (error) { alert((error as Error).message); return false; }
+    finally { saleInProgress.current = false; }
   };
 
   // Print Table Pre-bill (isolated table printing)
@@ -304,7 +341,7 @@ export function App() {
   ) => {
     const sub = items.reduce((acc, it) => acc + it.valorTotal, 0);
     const tableObj = typeof mesaNum === 'number' ? tables.find((t) => t.numero === mesaNum) : null;
-    const taxaServicoPercent = config.taxaServicoPadraoPercent || 10;
+    const taxaServicoPercent = config.taxaServicoPadraoPercent ?? 10;
     const taxaServicoValor = Number(((sub * taxaServicoPercent) / 100).toFixed(2));
     const totalLiquido = sub + taxaServicoValor;
 
@@ -338,6 +375,8 @@ export function App() {
       pagamentos: sale.pagamentos,
       troco: sale.troco,
       codigoVenda: sale.id,
+      dataHora: sale.dataHora,
+      observacoes: sale.observacoes,
     });
   };
 
@@ -354,6 +393,7 @@ export function App() {
       subtotal: kOrder.total,
       totalLiquido: kOrder.total,
       codigoVenda: kOrder.numeroPedido,
+      dataHora: kOrder.dataHora,
       observacoes: kOrder.observacoes,
     });
   };
@@ -365,24 +405,38 @@ export function App() {
     observacao?: string;
   }) => {
     const tableObj = typeof orderData.mesa === 'number' ? tables.find((t) => t.numero === orderData.mesa) : null;
+    const pendingItems = orderData.itens.map(item => {
+      const qty = Math.max(0, item.quantidade - (tableObj?.cozinhaEnviada?.[item.id] ?? 0));
+      return { ...item, quantidade: qty, valorTotal: Number((qty * item.precoUnitario).toFixed(2)) };
+    }).filter(item => item.quantidade > 0);
+    if (!pendingItems.length) { alert('Todos os itens desta mesa já foram enviados para a cozinha.'); return false; }
     const newKOrder: KitchenOrder = {
       id: `k-${Date.now()}`,
       numeroPedido: `MESA-${orderData.mesa}`,
       origem: 'Mesa',
       origemIdentificador: `Mesa #${orderData.mesa}`,
       clienteNome: tableObj?.cliente || `Mesa ${orderData.mesa}`,
-      itens: orderData.itens,
-      total: orderData.itens.reduce((acc, it) => acc + it.valorTotal, 0),
+      itens: pendingItems,
+      total: pendingItems.reduce((acc, it) => acc + it.valorTotal, 0),
       dataHora: new Date().toISOString(),
       status: 'novo',
       observacoes: orderData.observacao,
     };
     setKitchenOrders((prev) => [newKOrder, ...prev]);
+    if (tableObj) setTables(prev => prev.map(t => t.numero === tableObj.numero ? {
+      ...t, cozinhaEnviada: { ...t.cozinhaEnviada, ...Object.fromEntries(orderData.itens.map(item => [item.id, Math.max(item.quantidade, t.cozinhaEnviada?.[item.id] ?? 0)])) },
+    } : t));
+    return true;
   };
 
   // Clear daily sales (Zerar Caixa)
   const handleClearDailySales = () => {
-    setSales([]);
+    const backup = Object.fromEntries(Object.keys(localStorage).filter(k => k.startsWith('comandapro_')).map(k => [k, localStorage.getItem(k)]));
+    const blob = new Blob([JSON.stringify({ exportedAt: new Date().toISOString(), data: backup }, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a'); anchor.href = url;
+    anchor.download = `comandapro-backup-${new Date().toISOString().slice(0, 10)}.json`; anchor.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
   const occupiedTablesCount = tables.filter((t) => t.status === 'ocupada').length;
@@ -410,6 +464,9 @@ export function App() {
      : ''
    } ${aparencia.densidade === 'compacta' ? 'cp-compacta' : ''}`}
     >
+      {(storageError || externalChange) && <div role="alert" className="bg-rose-700 text-white p-3 text-sm font-semibold">
+        {externalChange ? 'O caixa foi alterado em outra aba. Recarregue esta página antes de continuar; use somente uma aba por caixa.' : 'Falha ao salvar dados neste navegador. Não feche a página. Faça backup e verifique o espaço disponível.'}
+      </div>}
       {/* Top Header Bar */}
       <Header
         config={config}
@@ -419,11 +476,11 @@ export function App() {
       />
 
       {/* Main Body: Left Sidebar + Tab Workspace */}
-      <div className="flex-1 flex overflow-hidden">
+      <div inert={externalChange} className="flex-1 flex overflow-hidden">
         {/* Left Navigation Sidebar */}
         <Sidebar
           activeTab={activeTab}
-          onSelectTab={(tabId) => setActiveTab(tabId)}
+          onSelectTab={navigateTab}
           collapsed={sidebarCollapsed}
           setCollapsed={setSidebarCollapsed}
           occupiedTablesCount={occupiedTablesCount}
@@ -445,7 +502,7 @@ export function App() {
                 onGoToPayment={handleGoToPayment}
                 onSendToKitchen={handleSendToKitchenFromPdv}
                 onPrintTableTicket={handlePrintTableTicket}
-                onNavigateTab={(tabId) => setActiveTab(tabId)}
+                onNavigateTab={navigateTab}
                 config={config}
                 selectedTableNumber={selectedTableNumber}
                 setSelectedTableNumber={setSelectedTableNumber}
@@ -460,7 +517,7 @@ export function App() {
                 employees={employees}
                 config={config}
                 onFinishSale={handleFinishSale}
-                onNavigateTab={(tabId) => setActiveTab(tabId)}
+                onNavigateTab={navigateTab}
                 onOpenReceiptPrint={handleOpenReceiptPrint}
               />
             )}
@@ -471,7 +528,7 @@ export function App() {
                 config={config}
                 onClearDailySales={handleClearDailySales}
                 onOpenReceiptPrint={handleOpenReceiptPrint}
-                onNavigateTab={(tabId) => setActiveTab(tabId)}
+                onNavigateTab={navigateTab}
               />
             )}
 
@@ -479,7 +536,7 @@ export function App() {
               <Tab4Configuracao
                 config={config}
                 onSaveConfig={(updated) => setConfig(updated)}
-                onNavigateTab={(tabId) => setActiveTab(tabId)}
+                onNavigateTab={navigateTab}
               />
             )}
 
@@ -490,7 +547,7 @@ export function App() {
                 config={config}
                 onSaveProducts={(prods) => setProducts(prods)}
                 onSaveSectors={(sec) => setSectors(sec)}
-                onNavigateTab={(tabId) => setActiveTab(tabId)}
+                onNavigateTab={navigateTab}
               />
             )}
 
@@ -498,14 +555,14 @@ export function App() {
               <Tab6Financeiro
                 sales={sales}
                 config={config}
-                onNavigateTab={(tabId) => setActiveTab(tabId)}
+                onNavigateTab={navigateTab}
               />
             )}
 
             {activeTab === 7 && (
               <Tab7Graficos
                 sales={sales}
-                onNavigateTab={(tabId) => setActiveTab(tabId)}
+                onNavigateTab={navigateTab}
               />
             )}
 
@@ -521,7 +578,7 @@ export function App() {
                 onPrintTableTicket={handlePrintTableTicket}
                 onUpdateTableStatus={handleUpdateTableStatus}
                 onReleaseTable={handleReleaseTable}
-                onNavigateTab={(tabId) => setActiveTab(tabId)}
+                onNavigateTab={navigateTab}
               />
             )}
 
@@ -533,7 +590,7 @@ export function App() {
                 deliverers={deliverers}
                 onSaveOrders={(orders) => setKitchenOrders(orders)}
                 onPrintKitchenOrder={handlePrintKitchenOrder}
-                onNavigateTab={(tabId) => setActiveTab(tabId)}
+                onNavigateTab={navigateTab}
               />
             )}
 
@@ -542,7 +599,7 @@ export function App() {
                 sales={sales}
                 tables={tables}
                 kitchenOrders={kitchenOrders}
-                onNavigateTab={(tabId) => setActiveTab(tabId)}
+                onNavigateTab={navigateTab}
               />
             )}
 
@@ -558,7 +615,7 @@ export function App() {
                 onSaveApps={(data) => setApps(data)}
                 onSaveSuppliers={(data) => setSuppliers(data)}
                 onSaveEmployees={(data) => setEmployees(data)}
-                onNavigateTab={(tabId) => setActiveTab(tabId)}
+                onNavigateTab={navigateTab}
               />
             )}
           </div>
@@ -586,6 +643,7 @@ export function App() {
         troco={printModalState.troco}
         codigoVenda={printModalState.codigoVenda}
         observacoes={printModalState.observacoes}
+        dataHora={printModalState.dataHora}
       />
 
       {/* Footer with Conta Bahia Contabilidade & v2.0 */}
