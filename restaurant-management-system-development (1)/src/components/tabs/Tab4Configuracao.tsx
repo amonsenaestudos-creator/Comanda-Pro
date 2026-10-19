@@ -14,8 +14,10 @@ import {
   MonitorSmartphone,
   Eye,
   EyeOff,
+  Plus,
+  TicketPercent,
 } from 'lucide-react';
-import { AppConfig, CaixaAppearance } from '../../types';
+import { AppConfig, CaixaAppearance, CupomDesconto } from '../../types';
 import { maskCnpjCpf, maskPhone, maskCep } from '../../utils/formatters';
 import { AppearanceControls } from '../AppearanceControls';
 import { TAB_LABELS } from '../Sidebar';
@@ -50,6 +52,13 @@ export const Tab4Configuracao: React.FC<Tab4ConfiguracaoProps> = ({
     onSaveConfig(next);
   };
 
+  /** Cupons: salvos na hora, sem precisar clicar em Salvar. */
+  const handleAppearanceChangeCupons = (cupons: CupomDesconto[]) => {
+    const next: AppConfig = { ...formData, cupons };
+    setFormData(next);
+    onSaveConfig(next);
+  };
+
   const toggleAbaOculta = (tabId: number) => {
     const list = aparencia.abasOcultas || [];
     const nextList = list.includes(tabId)
@@ -63,6 +72,9 @@ export const Tab4Configuracao: React.FC<Tab4ConfiguracaoProps> = ({
     message: string;
   } | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
+
+  // Formulário de novo cupom de desconto
+  const [novoCupom, setNovoCupom] = useState({ codigo: '', percentual: 10 });
 
   // BrasilAPI CNPJ lookup
   const handleConsultarBrasilApi = async () => {
@@ -844,6 +856,147 @@ export const Tab4Configuracao: React.FC<Tab4ConfiguracaoProps> = ({
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Section 2b: Cupons de Desconto Promocionais */}
+        <div className="cp-card p-5">
+          <div className="flex items-center space-x-2 pb-3 border-b border-zinc-200 mb-4">
+            <TicketPercent className="w-5 h-5 text-orange-600" />
+            <h3 className="font-bold text-sm text-zinc-900">
+              Cupons de Desconto (PDV)
+            </h3>
+          </div>
+          <p className="text-xs text-zinc-500 mb-3">
+            Códigos que o caixa aplica na frente de caixa (ex.: campanhas e
+            aniversariantes). O desconto entra na venda como percentual.
+          </p>
+
+          {/* Lista de cupons */}
+          <div className="space-y-2 mb-4">
+            {(formData.cupons || []).length === 0 && (
+              <p className="text-xs text-zinc-400 italic">
+                Nenhum cupom cadastrado.
+              </p>
+            )}
+            {(formData.cupons || []).map((cupom) => (
+              <div
+                key={cupom.codigo}
+                className="flex items-center justify-between gap-2 px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-lg text-xs"
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="font-mono font-bold text-zinc-900 uppercase">
+                    {cupom.codigo}
+                  </span>
+                  <span className="text-zinc-500">(-{cupom.percentual}%)</span>
+                  {!cupom.ativo && (
+                    <span className="text-[10px] font-bold text-rose-600 bg-rose-50 border border-rose-200 rounded px-1.5 py-0.5">
+                      INATIVO
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handleAppearanceChangeCupons(
+                        formData.cupons!.map((c) =>
+                          c.codigo === cupom.codigo ? { ...c, ativo: !c.ativo } : c
+                        )
+                      )
+                    }
+                    className={`px-2 py-1 rounded font-bold border transition ${
+                      cupom.ativo
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                        : 'bg-zinc-100 text-zinc-500 border-zinc-200 hover:bg-zinc-200'
+                    }`}
+                    title={cupom.ativo ? 'Desativar cupom' : 'Ativar cupom'}
+                  >
+                    {cupom.ativo ? 'Ativo' : 'Inativo'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handleAppearanceChangeCupons(
+                        formData.cupons!.filter((c) => c.codigo !== cupom.codigo)
+                      )
+                    }
+                    className="px-2 py-1 rounded font-bold bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-100 transition"
+                    title="Excluir cupom"
+                  >
+                    Excluir
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Novo cupom */}
+          <form
+            className="flex flex-wrap items-end gap-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const codigo = novoCupom.codigo.trim().toUpperCase();
+              if (!codigo) {
+                alert('Informe o código do cupom.');
+                return;
+              }
+              if (novoCupom.percentual <= 0 || novoCupom.percentual > 100) {
+                alert('O percentual deve estar entre 0,1% e 100%.');
+                return;
+              }
+              if ((formData.cupons || []).some((c) => c.codigo.toUpperCase() === codigo)) {
+                alert('Já existe um cupom com este código.');
+                return;
+              }
+              handleAppearanceChangeCupons([
+                ...(formData.cupons || []),
+                { codigo, percentual: novoCupom.percentual, ativo: true },
+              ]);
+              setNovoCupom({ codigo: '', percentual: 10 });
+            }}
+          >
+            <div className="flex-1 min-w-[10rem]">
+              <label className="text-[10px] font-bold text-zinc-500 uppercase block mb-1">
+                Código do cupom
+              </label>
+              <input
+                type="text"
+                maxLength={20}
+                placeholder="Ex.: FELIZ2026"
+                value={novoCupom.codigo}
+                onChange={(e) =>
+                  setNovoCupom({ ...novoCupom, codigo: e.target.value })
+                }
+                className="w-full px-2.5 py-1.5 text-xs font-mono uppercase bg-zinc-50 border border-zinc-300 rounded-lg"
+              />
+            </div>
+            <div className="w-28">
+              <label className="text-[10px] font-bold text-zinc-500 uppercase block mb-1">
+                Desconto (%)
+              </label>
+              <input
+                type="number"
+                min="0.1"
+                max="100"
+                step="0.5"
+                value={novoCupom.percentual}
+                onChange={(e) =>
+                  setNovoCupom({
+                    ...novoCupom,
+                    percentual: parseFloat(e.target.value) || 0,
+                  })
+                }
+                className="w-full px-2.5 py-1.5 text-xs font-mono text-right bg-zinc-50 border border-zinc-300 rounded-lg"
+              />
+            </div>
+            <button
+              type="submit"
+              className="px-4 py-1.5 text-xs font-bold rounded-lg bg-orange-600 hover:bg-orange-700 text-white flex items-center gap-1.5 transition"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Adicionar Cupom</span>
+            </button>
+          </form>
         </div>
 
         {/* Section 3: Mensagem Rodapé do Comprovante de Pagamentos */}

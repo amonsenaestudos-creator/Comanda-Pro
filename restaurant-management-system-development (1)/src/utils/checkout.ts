@@ -1,4 +1,4 @@
-import { OrderItem, PaymentSplit, Product, Sale, Table } from '../types';
+import { ComandaAvulsa, OrderItem, PaymentSplit, Product, Sale, Table } from '../types';
 
 export const cents = (value: number): number => Math.round((value + Number.EPSILON) * 100);
 export const money = (value: number): number => cents(value) / 100;
@@ -19,7 +19,13 @@ export function validatePayments(total: number, splits: PaymentSplit[], cashGive
 }
 
 /** Validates again at the application boundary, not only in the checkout UI. */
-export function completeSale(sale: Sale, sales: Sale[], tables: Table[], products: Product[]) {
+export function completeSale(
+  sale: Sale,
+  sales: Sale[],
+  tables: Table[],
+  products: Product[],
+  comandas: ComandaAvulsa[] = []
+) {
   if (sales.some(s => s.id === sale.id)) throw new Error('Esta venda já foi registrada.');
   if (!sale.itens.length || sale.itens.some(i => !Number.isFinite(i.quantidade) || i.quantidade <= 0 || !Number.isFinite(i.precoUnitario) || i.precoUnitario < 0 || cents(i.valorTotal) !== cents(i.precoUnitario * i.quantidade))) {
     throw new Error('A comanda contém itens ou valores inválidos.');
@@ -37,6 +43,13 @@ export function completeSale(sale: Sale, sales: Sale[], tables: Table[], product
       throw new Error('A mesa foi alterada. Volte ao caixa e abra o pagamento novamente.');
     }
   }
+  // Comanda avulsa (Balcão/Delivery): precisa continuar aberta e íntegra.
+  if (sale.comandaId && typeof sale.mesa !== 'number') {
+    const comanda = comandas.find(c => c.id === sale.comandaId);
+    if (!comanda || JSON.stringify(comanda.itens) !== JSON.stringify(sale.itens)) {
+      throw new Error('A comanda foi alterada. Volte ao caixa e abra o pagamento novamente.');
+    }
+  }
   const quantities = new Map<string, number>();
   sale.itens.forEach(i => quantities.set(i.productId, (quantities.get(i.productId) ?? 0) + i.quantidade));
   for (const [id, qty] of quantities) {
@@ -49,5 +62,6 @@ export function completeSale(sale: Sale, sales: Sale[], tables: Table[], product
     sales: [sale, ...sales],
     tables: tables.map(t => t.numero === sale.mesa ? { numero: t.numero, status: 'livre' as const, itens: [], total: 0 } : t),
     products: products.map(p => ({ ...p, estoque: Number((p.estoque - (quantities.get(p.id) ?? 0)).toFixed(6)) })),
+    comandas: comandas.filter(c => c.id !== sale.comandaId),
   };
 }

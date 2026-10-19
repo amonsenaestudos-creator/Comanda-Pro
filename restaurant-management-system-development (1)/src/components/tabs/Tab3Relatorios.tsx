@@ -12,7 +12,7 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { AppConfig, Sale } from '../../types';
-import { formatCurrency, formatDateTime, localDayKey } from '../../utils/formatters';
+import { formatCurrency, formatDateTime, localDayKey, rotuloOrigemVenda } from '../../utils/formatters';
 
 interface Tab3RelatoriosProps {
   sales: Sale[];
@@ -327,7 +327,7 @@ export const Tab3Relatorios: React.FC<Tab3RelatoriosProps> = ({
                     </td>
                     <td className="py-2 px-3">
                       <span className="bg-zinc-100 text-zinc-800 font-semibold px-2 py-0.5 rounded text-[11px]">
-                        {typeof sale.mesa === 'number' ? `Mesa ${sale.mesa}` : sale.mesa || 'Balcão'}
+                        {rotuloOrigemVenda(sale)}
                       </span>
                     </td>
                     <td className="py-2 px-3 text-zinc-700">{sale.atendente}</td>

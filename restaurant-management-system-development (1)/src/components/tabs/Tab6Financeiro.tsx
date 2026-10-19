@@ -9,7 +9,7 @@ import {
   Building,
 } from 'lucide-react';
 import { AppConfig, Sale } from '../../types';
-import { formatCurrency, formatDateTime } from '../../utils/formatters';
+import { formatCurrency, formatDateTime, rotuloOrigemVenda } from '../../utils/formatters';
 
 interface Tab6FinanceiroProps {
   sales: Sale[];
@@ -107,7 +107,7 @@ export const Tab6Financeiro: React.FC<Tab6FinanceiroProps> = ({
           const taxa = getRateForMethod(p.metodo);
           const comissao = ((p.valor * taxa) / 100).toFixed(2);
           const liq = (p.valor - parseFloat(comissao)).toFixed(2);
-          return `${s.dataHora};${s.id};${s.mesa || 'Balcão'};${p.metodo};${p.valor.toFixed(2)};${taxa}%;${comissao};${liq};${s.atendente}`;
+          return `${s.dataHora};${s.id};${rotuloOrigemVenda(s)};${p.metodo};${p.valor.toFixed(2)};${taxa}%;${comissao};${liq};${s.atendente}`;
         })
       )
       .join('\n');
@@ -329,7 +329,7 @@ export const Tab6Financeiro: React.FC<Tab6FinanceiroProps> = ({
                 <span className="font-mono font-bold text-zinc-800">{s.id}</span> &bull;{' '}
                 <span className="text-zinc-500">{formatDateTime(s.dataHora)}</span> &bull;{' '}
                 <span className="font-medium text-zinc-700">
-                  {typeof s.mesa === 'number' ? `Mesa ${s.mesa}` : s.mesa || 'Balcão'}
+                  {rotuloOrigemVenda(s)}
                 </span>
               </div>
               <div className="flex items-center gap-4 font-mono">

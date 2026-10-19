@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   CreditCard,
   QrCode,
@@ -18,6 +18,7 @@ import {
   Wallet,
   Barcode,
   Ticket,
+  TicketPercent,
   RefreshCw,
   PenLine,
   Bitcoin,
@@ -45,6 +46,13 @@ interface Tab2PagamentoProps {
     itens: OrderItem[];
     subtotal: number;
     atendente?: string;
+    tipoAtendimento?: Sale['tipoAtendimento'];
+    numeroComanda?: number;
+    comandaId?: string;
+    clienteNome?: string;
+    clienteTelefone?: string;
+    enderecoEntrega?: string;
+    cupomCodigo?: string;
   } | null;
   employees: Employee[];
   config: AppConfig;
@@ -94,14 +102,27 @@ export const Tab2Pagamento: React.FC<Tab2PagamentoProps> = ({
   // Finished sale state to allow printing receipt right after
   const [lastFinishedSale, setLastFinishedSale] = useState<Sale | null>(null);
 
+  // Cupom trazido da frente de caixa (desconto % pré-definido na Configuração)
+  const cupomResolvido = useMemo(() => {
+    const codigo = currentOrder?.cupomCodigo?.trim().toUpperCase();
+    if (!codigo) return null;
+    const found = (config.cupons || []).find(
+      (c) => c.ativo && c.codigo.trim().toUpperCase() === codigo
+    );
+    return found ? { codigo: found.codigo, percentual: found.percentual } : null;
+  }, [currentOrder, config.cupons]);
+
   // Never carry payments or customer details to another order.
   useEffect(() => {
     if (!currentOrder) return;
-    setSplits([]); setCashGiven(''); setDiscountPercent(0);
-    setClienteNome(''); setClienteDoc(''); setLastFinishedSale(null);
+    setSplits([]); setCashGiven('');
+    setDiscountPercent(cupomResolvido?.percentual ?? 0);
+    setClienteNome(currentOrder.clienteNome || '');
+    setClienteDoc(''); setLastFinishedSale(null);
     setHasServiceCharge(true);
     setServiceChargePercent(config.taxaServicoPadraoPercent ?? 10);
     finishing.current = false;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentOrder]);
 
   // Sync order data when opened
@@ -208,11 +229,12 @@ export const Tab2Pagamento: React.FC<Tab2PagamentoProps> = ({
       dataHora: new Date().toISOString(),
       mesa: currentOrder.mesa,
       tipoAtendimento:
-        typeof currentOrder.mesa === 'number'
+        currentOrder.tipoAtendimento ??
+        (typeof currentOrder.mesa === 'number'
           ? 'Mesa'
           : String(currentOrder.mesa).toLowerCase().includes('delivery')
           ? 'Delivery'
-          : 'Balcão',
+          : 'Balcão'),
       itens: currentOrder.itens,
       subtotal,
       taxaServicoPercent: hasServiceCharge ? serviceChargePercent : 0,
@@ -223,9 +245,14 @@ export const Tab2Pagamento: React.FC<Tab2PagamentoProps> = ({
       pagamentos: splits.length > 0 ? splits : [{ metodo: selectedMethod, valor: totalLiquido }],
       troco: trocoCalculado > 0 ? trocoCalculado : undefined,
       atendente: atendente || config.usuarioAtual,
-      clienteNome: clienteNome || undefined,
+      clienteNome: clienteNome || currentOrder.clienteNome || undefined,
       clienteDoc: clienteDoc || undefined,
       impostosEstimados: impostos,
+      comandaId: currentOrder.comandaId,
+      numeroComanda: currentOrder.numeroComanda,
+      clienteTelefone: currentOrder.clienteTelefone,
+      enderecoEntrega: currentOrder.enderecoEntrega,
+      cupomCodigo: cupomResolvido?.codigo,
     };
 
     finishing.current = true;
@@ -307,12 +334,24 @@ export const Tab2Pagamento: React.FC<Tab2PagamentoProps> = ({
               <CreditCard className="w-5 h-5 text-orange-600" />
               <span>Checkout & Pagamento</span>
               <span className="text-xs bg-orange-100 text-orange-800 px-2 py-0.5 rounded font-mono font-bold">
-                Mesa / Comanda #{comandaNumero || currentOrder.mesa}
+                {currentOrder.tipoAtendimento ??
+                  (typeof currentOrder.mesa === 'number' ? 'Mesa' : 'Comanda')}{' '}
+                #{(currentOrder.numeroComanda ?? comandaNumero) || currentOrder.mesa}
               </span>
             </h2>
             <p className="text-[11px] text-zinc-500">
               {currentOrder.itens.length} itens lançados na comanda &bull; Subtotal:{' '}
               {formatCurrency(subtotal)}
+              {currentOrder.clienteNome && (
+                <span className="ml-2 font-semibold text-zinc-600">
+                  &bull; Cliente: {currentOrder.clienteNome}
+                </span>
+              )}
+              {currentOrder.enderecoEntrega && (
+                <span className="ml-2 font-semibold text-zinc-600">
+                  &bull; Entrega: {currentOrder.enderecoEntrega}
+                </span>
+              )}
             </p>
           </div>
         </div>
@@ -416,6 +455,14 @@ export const Tab2Pagamento: React.FC<Tab2PagamentoProps> = ({
                     -{formatCurrency(descontoValor)}
                   </span>
                 </div>
+                {cupomResolvido && (
+                  <div className="flex items-center gap-1.5 text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-2 py-1">
+                    <TicketPercent className="w-3.5 h-3.5 shrink-0" />
+                    <span className="text-[11px] font-bold">
+                      Cupom {cupomResolvido.codigo} aplicado (-{cupomResolvido.percentual}%)
+                    </span>
+                  </div>
+                )}
                 <div className="flex items-center justify-between text-[11px]">
                   <span className="text-zinc-500">
                     Máx: {config.descontoMaximoPercent ?? 15}%

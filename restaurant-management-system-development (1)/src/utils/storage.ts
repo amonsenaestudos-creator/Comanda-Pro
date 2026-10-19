@@ -2,6 +2,7 @@ import {
   AppConfig,
   AppIntegration,
   CaixaAppearance,
+  ComandaAvulsa,
   Customer,
   Deliverer,
   Employee,
@@ -57,6 +58,7 @@ export const normalizeConfig = (stored?: Partial<AppConfig> | null): AppConfig =
     dadosEmpresa: { ...DEFAULT_CONFIG.dadosEmpresa, ...(storedData.dadosEmpresa || {}) },
     taxasComissao: { ...DEFAULT_CONFIG.taxasComissao, ...(storedData.taxasComissao || {}) },
     aparencia: resolveAppearance(storedData.aparencia),
+    cupons: Array.isArray(storedData.cupons) ? storedData.cupons : DEFAULT_CONFIG.cupons,
   };
 };
 
@@ -101,6 +103,7 @@ export const DEFAULT_CONFIG: AppConfig = {
   chavePix: 'financeiro@comandapro.com.br',
   usuarioAtual: 'Operador 01 - Carlos Eduardo',
   aparencia: DEFAULT_APARENCIA,
+  cupons: [{ codigo: 'SABOR10', percentual: 10, ativo: true }],
 };
 
 export const DEFAULT_SECTORS = [
@@ -385,6 +388,31 @@ export function createInitialTables(): Table[] {
 }
 export function createInitialSales(): Sale[] { return []; }
 export function createInitialKitchenOrders(): KitchenOrder[] { return []; }
+export function createInitialComandas(): ComandaAvulsa[] { return []; }
+export function createInitialComandaCounter(): number { return 1; }
+
+/** Snapshot operacional: produtos, mesas, comandas avulsas, vendas e contador de comandas. */
+export interface OperacoesStore {
+  products: Product[];
+  tables: Table[];
+  sales: Sale[];
+  comandas: ComandaAvulsa[];
+  proximoNumeroComanda: number;
+}
+
+/** Dados antigos (sem comandas) continuam abrindo normalmente. */
+export const normalizeOperacoes = (
+  stored?: Partial<OperacoesStore> | null
+): OperacoesStore => {
+  const contador = Number(stored?.proximoNumeroComanda);
+  return {
+    products: stored?.products ?? [],
+    tables: stored?.tables ?? createInitialTables(),
+    sales: stored?.sales ?? [],
+    comandas: Array.isArray(stored?.comandas) ? stored.comandas : [],
+    proximoNumeroComanda: Number.isFinite(contador) && contador > 0 ? contador : 1,
+  };
+};
 
 const STORAGE_KEYS = {
   OPERATIONS: 'comandapro_operations_v1',

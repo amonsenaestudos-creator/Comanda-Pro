@@ -14,6 +14,7 @@ import {
   MapPin,
   User,
   ShoppingBag,
+  Ban,
 } from 'lucide-react';
 import {
   Customer,
@@ -47,7 +48,7 @@ export const Tab9CozinhaDelivery: React.FC<Tab9CozinhaDeliveryProps> = ({
   const [isNewOrderModalOpen, setIsNewOrderModalOpen] = useState(false);
 
   // New Order Form State
-  const [orderOrigin, setOrderOrigin] = useState<'iFood' | 'WhatsApp' | 'UberEats' | 'Balcão'>('WhatsApp');
+  const [orderOrigin, setOrderOrigin] = useState<'iFood' | 'WhatsApp' | 'UberEats' | 'Balcão' | 'Delivery'>('WhatsApp');
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>('');
   const [selectedDelivererId, setSelectedDelivererId] = useState<string>('');
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
@@ -304,6 +305,22 @@ export const Tab9CozinhaDelivery: React.FC<Tab9CozinhaDeliveryProps> = ({
                         </div>
                       )}
 
+                      {/* Cancelamentos registrados pelo caixa */}
+                      {(order.cancelamentos || []).length > 0 && (
+                        <div className="text-[10px] text-rose-800 bg-rose-50 p-1.5 rounded border border-rose-200 mb-3 font-semibold">
+                          <div className="flex items-center gap-1 mb-1">
+                            <Ban className="w-3 h-3" />
+                            <span>CANCELADOS PELO CAIXA (não produzir):</span>
+                          </div>
+                          {order.cancelamentos!.map((c, i) => (
+                            <div key={i} className="pl-4">
+                              {c.quantidade}x {c.descricao}
+                              {c.motivo ? ` — ${c.motivo}` : ''}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
                       {/* Card Bottom: Total, Print, Move next */}
                       <div className="flex items-center justify-between pt-2 border-t border-zinc-100">
                         <span className="font-mono font-extrabold text-sm text-zinc-900">
@@ -392,6 +409,7 @@ export const Tab9CozinhaDelivery: React.FC<Tab9CozinhaDeliveryProps> = ({
                     <option value="iFood">iFood Pedidos</option>
                     <option value="UberEats">UberEats</option>
                     <option value="Balcão">Balcão / Retirada</option>
+                    <option value="Delivery">Delivery Próprio (PDV)</option>
                   </select>
                 </div>
 

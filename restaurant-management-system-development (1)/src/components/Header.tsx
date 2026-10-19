@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { UtensilsCrossed } from 'lucide-react';
+import { CircleDollarSign, UtensilsCrossed } from 'lucide-react';
 import { cn } from '../utils/cn';
-import { AppConfig, Table } from '../types';
-import { formatDateShort, formatTimeShort } from '../utils/formatters';
+import { AppConfig, Sale, Table } from '../types';
+import { formatCurrency, formatDateShort, formatTimeShort } from '../utils/formatters';
 
 interface HeaderProps {
   config: AppConfig;
   tables: Table[];
+  sales: Sale[];
   /** Data/hora (ISO) da última confirmação de `ativa: true` no servidor. */
   licenseVerifiedAt: string | null;
   licenseOffline: boolean;
@@ -14,11 +15,13 @@ interface HeaderProps {
 
 /**
  * Barra superior enxuta: identidade do caixa, o número que importa (mesas
- * ocupadas / contas pedidas), relógio e operador. Navegação ficou no menu.
+ * ocupadas / contas pedidas / vendas do dia), relógio e operador.
+ * Navegação ficou no menu.
  */
 export const Header: React.FC<HeaderProps> = ({
   config,
   tables,
+  sales,
   licenseVerifiedAt,
   licenseOffline,
 }) => {
@@ -31,6 +34,12 @@ export const Header: React.FC<HeaderProps> = ({
 
   const occupiedCount = tables.filter((t) => t.status === 'ocupada').length;
   const billRequestedCount = tables.filter((t) => t.status === 'conta_solicitada').length;
+
+  // Vendas do dia local (o caixa fecha pela data do estabelecimento)
+  const diaLocal = (iso: string) => new Date(iso).toLocaleDateString('pt-BR');
+  const hoje = diaLocal(new Date().toISOString());
+  const vendasHoje = sales.filter((s) => diaLocal(s.dataHora) === hoje);
+  const totalHoje = vendasHoje.reduce((acc, s) => acc + s.totalLiquido, 0);
 
   const verificacaoLabel = licenseVerifiedAt
     ? new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(
@@ -74,6 +83,16 @@ export const Header: React.FC<HeaderProps> = ({
                 <span className="hidden lg:inline">contas pedidas</span>
               </span>
             )}
+            <span
+              className="flex items-center gap-1.5"
+              title={`${vendasHoje.length} venda${vendasHoje.length === 1 ? '' : 's'} concluída${vendasHoje.length === 1 ? '' : 's'} hoje`}
+            >
+              <CircleDollarSign className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="font-mono text-emerald-300 font-bold">
+                {formatCurrency(totalHoje)}
+              </span>
+              <span className="hidden lg:inline">hoje</span>
+            </span>
           </div>
 
           <div
