@@ -1,3 +1,5 @@
+import { Sale } from '../types';
+
 export const formatCurrency = (val: number): string => {
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
@@ -78,4 +80,13 @@ export const localDayKey = (dateStr?: string | Date): string => {
   const d = dateStr ? new Date(dateStr) : new Date();
   if (isNaN(d.getTime())) return '';
   return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
+};
+
+/** Rótulo amigável da origem da venda (mesa, balcão ou delivery). */
+export const rotuloOrigemVenda = (sale: Sale): string => {
+  if (typeof sale.mesa === 'number') return `Mesa ${sale.mesa}`;
+  if (sale.numeroComanda) {
+    return `${sale.tipoAtendimento === 'Delivery' ? 'Delivery' : 'Balcão'} #${sale.numeroComanda}`;
+  }
+  return sale.tipoAtendimento || 'Balcão';
 };

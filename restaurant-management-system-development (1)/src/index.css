@@ -464,6 +464,17 @@
 }
 .cp-order-panel { align-self: start; }
 .cp-checkout-action { min-height: 52px; border-radius: 0.75rem; }
+
+/* Seletor segmentado de tipo de atendimento (Mesa/Balcão/Delivery) */
+.cp-seg [role='tab'] { border: 1px solid transparent; }
+.cp-seg [role='tab'][aria-selected='true'] { border-color: transparent; }
+
+/* Abas de comandas abertas no topo do caixa */
+.cp-pdv .cp-order-tab-on { box-shadow: 0 2px 10px rgba(234, 88, 12, 0.35); }
+
+/* Cartões de estatística do caixa */
+.cp-pdv .cp-stat:hover { border-color: var(--cp-accent); }
+
 @media (min-width: 1024px) {
   .cp-order-panel { position: sticky; top: 4.5rem; }
 }

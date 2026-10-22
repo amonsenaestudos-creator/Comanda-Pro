@@ -49,6 +49,36 @@ export interface Table {
   total: number;
   observacaoMesa?: string;
   cozinhaEnviada?: Record<string, number>;
+  /** Telefone do cliente da mesa (aviso/retorno). */
+  clienteTelefone?: string;
+  /** Número sequencial da comanda aberta nesta mesa. */
+  numeroComanda?: number;
+  /** Cupom de desconto aplicado na comanda. */
+  cupom?: string;
+}
+
+/** Comanda avulsa: atendimento de Balcão ou Delivery, sem mesa. */
+export interface ComandaAvulsa {
+  id: string;
+  numero: number;
+  tipo: 'Balcão' | 'Delivery';
+  itens: OrderItem[];
+  subtotal: number;
+  garcom?: string;
+  clienteNome?: string;
+  clienteTelefone?: string;
+  endereco?: string;
+  abertura: string;
+  observacao?: string;
+  cozinhaEnviada?: Record<string, number>;
+  cupom?: string;
+}
+
+/** Código promocional aplicável na frente de caixa. */
+export interface CupomDesconto {
+  codigo: string;
+  percentual: number;
+  ativo: boolean;
 }
 
 export interface PaymentSplit {
@@ -76,6 +106,13 @@ export interface Sale {
   clienteDoc?: string;
   impostosEstimados: number;
   observacoes?: string;
+  /** Id da comanda avulsa (Balcão/Delivery) que gerou a venda. */
+  comandaId?: string;
+  /** Número da comanda exibido no cupom. */
+  numeroComanda?: number;
+  clienteTelefone?: string;
+  enderecoEntrega?: string;
+  cupomCodigo?: string;
 }
 
 export interface CompanyData {
@@ -147,6 +184,8 @@ export interface AppConfig {
   chavePix: string;
   usuarioAtual: string;
   aparencia: CaixaAppearance;
+  /** Cupons de desconto promocionais aplicáveis no PDV. */
+  cupons: CupomDesconto[];
 }
 
 export interface Customer {
@@ -201,10 +240,18 @@ export interface Employee {
 
 export type KitchenOrderStatus = 'novo' | 'preparo' | 'pronto' | 'concluido';
 
+/** Registro de cancelamento de item já enviado à produção. */
+export interface CancelamentoItem {
+  descricao: string;
+  quantidade: number;
+  motivo?: string;
+  dataHora: string;
+}
+
 export interface KitchenOrder {
   id: string;
   numeroPedido: string;
-  origem: 'Mesa' | 'iFood' | 'UberEats' | 'WhatsApp' | 'Balcão';
+  origem: 'Mesa' | 'iFood' | 'UberEats' | 'WhatsApp' | 'Balcão' | 'Delivery';
   origemIdentificador: string; // Ex: "Mesa 12" ou "WhatsApp #902"
   clienteNome: string;
   clienteTelefone?: string;
@@ -216,4 +263,6 @@ export interface KitchenOrder {
   dataHora: string;
   status: KitchenOrderStatus;
   observacoes?: string;
+  /** Itens cancelados depois de enviados (auditoria para a cozinha). */
+  cancelamentos?: CancelamentoItem[];
 }

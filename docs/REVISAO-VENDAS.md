@@ -2,6 +2,29 @@
 
 Data: 18/10/2026. Revisão de código e testes automatizados; **não é uma garantia de ausência de todos os defeitos**.
 
+## Incremento: PDV completo (referência de restaurante moderno)
+
+**Interface mais próxima das referências** (dashboard de delivery + tela de PDV):
+- Faixa de cartões de estatística no caixa: **Vendas hoje**, **Comandas abertas**, **Itens na comanda** e **Ticket médio** (estilo "Total Sale").
+- Seletor segmentado de **atendimento: Mesa / Balcão / Delivery** (equivalente a Dine In / Takeaway / Delivery).
+- Réguas de **comandas abertas** estilo abas: número da comanda (`#123`), mesa, cliente, valor e status (Em andamento / Enviado à cozinha / Conta pedida).
+- Painel da comanda com **cliente, telefone, endereço de entrega**, **cupom de desconto** (ex.: `SABOR10`), subtotal e botão grande **Processar Pagamento**.
+- Cabeçalho passou a mostrar o **total vendido no dia**.
+
+**Funções de PDV adicionadas** (o sistema agora cobre a operação completa):
+- **Comandas avulsas de Balcão e Delivery** com número sequencial próprio, cliente/telefone/endereço, envio incremental à cozinha e fechamento normal (a venda remove a comanda).
+- **Cupons de desconto** cadastrados em Configuração (código + %, ativar/excluir), aplicados no PDV e levados para o pagamento.
+- **Mover comanda** entre mesas (itens, cliente, atendente e envios acompanham).
+- **Dividir comanda**: itens marcados viram uma nova comanda de Balcão.
+- **Cancelamento de item já enviado à cozinha**: o KDS registra o cancelamento com motivo (auditoria visível na aba Cozinha & Delivery).
+- **Pedir conta** direto do PDV; **numeração de comanda** sequencial compartilhada entre mesas e comandas avulsas.
+- Estoque considera itens reservados em **todas** as comandas (mesas + avulsas).
+- Relatórios/Financeiro/Resumo exibem a origem amigável (`Balcão #3`, `Delivery #12`) em vez de identificadores internos.
+
+**Validação**: `npm test` (22 testes — 7 novos cobrindo balcão, delivery, cupom, mover, dividir, cancelamento na cozinha e numeração), `npm run typecheck`, `npm run build` e `npm audit` (0 vulnerabilidades).
+
+**Limites**: cupom é percentual simples (sem regras de validade/usos); dividir gera comanda de Balcão (não fraciona por pagadores na mesma mesa — use as parcelas do checkout); cancelamento de item enviado é registro de auditoria, não estorna produção automaticamente.
+
 ## Problemas encontrados e corrigidos
 
 | Área | Falha anterior | Correção |

@@ -117,7 +117,8 @@ export const PrintTicketModal: React.FC<PrintTicketModalProps> = ({
             <Printer className="w-5 h-5 text-sky-400" />
             <h3 className="font-bold text-sm">
               {ticketType === 'cupom_venda' && 'Comprovante Térmico de Venda'}
-              {ticketType === 'conferencia_mesa' && `Pré-Conta / Mesa ${mesa || ''}`}
+              {ticketType === 'conferencia_mesa' &&
+                `Pré-Conta / ${typeof mesa === 'number' ? `Mesa ${mesa}` : mesa || ''}`}
               {ticketType === 'cozinha' && 'Ticket de Produção (Cozinha/KDS)'}
             </h3>
           </div>
@@ -197,7 +198,7 @@ export const PrintTicketModal: React.FC<PrintTicketModalProps> = ({
                 <div className="flex justify-between">
                   <span>MESA / COMANDA:</span>
                   <span className="font-bold text-sm bg-zinc-200 px-1 rounded">
-                    Mesa #{mesa}
+                    {typeof mesa === 'number' ? `Mesa #${mesa}` : mesa}
                   </span>
                 </div>
               )}

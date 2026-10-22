@@ -3,6 +3,7 @@ import {
   AppConfig,
   AppIntegration,
   CaixaAppearance,
+  ComandaAvulsa,
   Customer,
   Deliverer,
   Employee,
@@ -22,12 +23,14 @@ import {
   INITIAL_EMPLOYEES,
   INITIAL_PRODUCTS,
   INITIAL_SUPPLIERS,
+  OperacoesStore,
   STORAGE_KEYS,
   createInitialKitchenOrders,
   createInitialSales,
   createInitialTables,
   getStored,
   normalizeConfig,
+  normalizeOperacoes,
   resolveAppearance,
   resolveHiddenTabs,
   setStored,
@@ -53,6 +56,10 @@ import { Tab9CozinhaDelivery } from './components/tabs/Tab9CozinhaDelivery';
 import { Tab10Cadastros } from './components/tabs/Tab10Cadastros';
 import { Tab11ResumoRapido } from './components/tabs/Tab11ResumoRapido';
 
+/** Identificador exibido na cozinha para comandas avulsas. */
+const identificadorComanda = (comanda?: ComandaAvulsa): string | null =>
+  comanda ? `${comanda.tipo} #${comanda.numero}` : null;
+
 export function App() {
   const accessLicense = useAccessLicense();
 
@@ -67,7 +74,10 @@ export function App() {
   }, []);
 
   // A single snapshot prevents a completed sale from being stored without its stock/table update.
-  const [initialOperations] = useState(() => getStored<{ products: Product[]; tables: Table[]; sales: Sale[] } | null>(STORAGE_KEYS.OPERATIONS, null));
+  const [initialOperations] = useState<Partial<OperacoesStore> | null>(() =>
+    getStored<Partial<OperacoesStore> | null>(STORAGE_KEYS.OPERATIONS, null)
+  );
+  const initialComandas = normalizeOperacoes(initialOperations);
 
   // Application State
   const [activeTab, setActiveTab] = useState<number>(1);
@@ -159,13 +169,32 @@ export function App() {
     getStored<KitchenOrder[]>(STORAGE_KEYS.KITCHEN_ORDERS, createInitialKitchenOrders())
   );
 
+  // Comandas avulsas (Balcão/Delivery) + numeração sequencial
+  const [comandas, setComandas] = useState<ComandaAvulsa[]>(
+    () => initialComandas.comandas
+  );
+  const [proximoNumeroComanda, setProximoNumeroComanda] = useState<number>(
+    () => initialComandas.proximoNumeroComanda
+  );
+
   // Active Context for PDV and Payment
   const [selectedTableNumber, setSelectedTableNumber] = useState<number>(1);
+  /** Qual comanda o caixa tem aberta no PDV (mesa ou avulsa) — usada pelo F2. */
+  const [contextoPdv, setContextoPdv] = useState<
+    { tipo: 'mesa'; numero: number } | { tipo: 'avulsa'; id: string | null }
+  >({ tipo: 'mesa', numero: 1 });
   const [currentOrderForPayment, setCurrentOrderForPayment] = useState<{
     mesa: number | string;
     itens: OrderItem[];
     subtotal: number;
     atendente?: string;
+    tipoAtendimento?: Sale['tipoAtendimento'];
+    numeroComanda?: number;
+    comandaId?: string;
+    clienteNome?: string;
+    clienteTelefone?: string;
+    enderecoEntrega?: string;
+    cupomCodigo?: string;
   } | null>(null);
 
   // Print Ticket Modal State
@@ -197,15 +226,42 @@ export function App() {
   });
 
   useEffect(() => {
-    if (!externalChange) setStored(STORAGE_KEYS.OPERATIONS, { products, tables, sales });
-  }, [products, tables, sales, externalChange]);
+    if (!externalChange) setStored(STORAGE_KEYS.OPERATIONS, { products, tables, sales, comandas, proximoNumeroComanda });
+  }, [products, tables, sales, comandas, proximoNumeroComanda, externalChange]);
 
   const navigateTab = (tabId: number) => {
     if (tabId === 2 && activeTab !== 2) {
-      const table = tables.find(t => t.numero === selectedTableNumber);
-      setCurrentOrderForPayment(table?.itens.length ? {
-        mesa: table.numero, itens: table.itens, subtotal: orderSubtotal(table.itens), atendente: table.garcom,
-      } : null);
+      if (contextoPdv.tipo === 'mesa') {
+        const table = tables.find(t => t.numero === contextoPdv.numero);
+        setCurrentOrderForPayment(table?.itens.length ? {
+          mesa: table.numero,
+          itens: table.itens,
+          subtotal: orderSubtotal(table.itens),
+          atendente: table.garcom,
+          tipoAtendimento: 'Mesa',
+          numeroComanda: table.numeroComanda,
+          clienteNome: table.cliente,
+          clienteTelefone: table.clienteTelefone,
+          cupomCodigo: table.cupom,
+        } : null);
+      } else {
+        const comanda = contextoPdv.id
+          ? comandas.find(c => c.id === contextoPdv.id)
+          : undefined;
+        setCurrentOrderForPayment(comanda?.itens.length ? {
+          mesa: comanda.id,
+          itens: comanda.itens,
+          subtotal: orderSubtotal(comanda.itens),
+          atendente: comanda.garcom,
+          tipoAtendimento: comanda.tipo,
+          numeroComanda: comanda.numero,
+          comandaId: comanda.id,
+          clienteNome: comanda.clienteNome,
+          clienteTelefone: comanda.clienteTelefone,
+          enderecoEntrega: comanda.endereco,
+          cupomCodigo: comanda.cupom,
+        } : null);
+      }
     }
     setActiveTab(tabId);
   };
@@ -253,6 +309,9 @@ export function App() {
     waiterName?: string
   ) => {
     const total = items.reduce((acc, it) => acc + it.valorTotal, 0);
+    // Primeiro lançamento da mesa recebe o número sequencial da comanda.
+    const tAtual = tables.find((t) => t.numero === tableNum);
+    const precisaNumero = items.length > 0 && !!tAtual && !tAtual.numeroComanda;
     setTables((prev) =>
       prev.map((t) => {
         if (t.numero === tableNum) {
@@ -263,12 +322,207 @@ export function App() {
             status: items.length > 0 ? (t.status === 'livre' ? 'ocupada' : t.status) : 'livre',
             garcom: waiterName || t.garcom || employees[0]?.nome,
             abertura: items.length > 0 ? (t.abertura || new Date().toISOString()) : undefined,
-            ...(items.length === 0 ? { garcom: undefined, cliente: undefined, observacaoMesa: undefined } : {}),
+            ...(precisaNumero ? { numeroComanda: proximoNumeroComanda } : {}),
+            ...(items.length === 0 ? { garcom: undefined, cliente: undefined, observacaoMesa: undefined, clienteTelefone: undefined, cupom: undefined, numeroComanda: undefined } : {}),
           };
         }
         return t;
       })
     );
+    if (precisaNumero) {
+      setProximoNumeroComanda((n) => n + 1);
+    }
+  };
+
+  // Dados de contexto da mesa (cliente, telefone, cupom) sem mexer nos itens
+  const handleUpdateTableContext = (
+    tableNum: number,
+    patch: Partial<Pick<Table, 'cliente' | 'clienteTelefone' | 'cupom'>>
+  ) => {
+    setTables((prev) =>
+      prev.map((t) => (t.numero === tableNum ? { ...t, ...patch } : t))
+    );
+  };
+
+  // Aplica cupom de desconto em uma comanda avulsa
+  const handleUpdateComandaContext = (
+    comandaId: string,
+    patch: Partial<Pick<ComandaAvulsa, 'cupom' | 'clienteNome' | 'clienteTelefone' | 'endereco' | 'garcom'>>
+  ) => {
+    setComandas((prev) =>
+      prev.map((c) => (c.id === comandaId ? { ...c, ...patch } : c))
+    );
+  };
+
+  // Cria uma comanda avulsa (Balcão ou Delivery) e devolve o objeto criado
+  const handleCreateComandaAvulsa = (dados: {
+    tipo: 'Balcão' | 'Delivery';
+    clienteNome?: string;
+    clienteTelefone?: string;
+    endereco?: string;
+    garcom?: string;
+  }): ComandaAvulsa => {
+    const nova: ComandaAvulsa = {
+      id: `CMD-${crypto.randomUUID()}`,
+      numero: proximoNumeroComanda,
+      tipo: dados.tipo,
+      clienteNome: dados.clienteNome?.trim() || undefined,
+      clienteTelefone: dados.clienteTelefone?.trim() || undefined,
+      endereco: dados.tipo === 'Delivery' ? dados.endereco?.trim() || undefined : undefined,
+      garcom: dados.garcom || employees[0]?.nome,
+      itens: [],
+      subtotal: 0,
+      abertura: new Date().toISOString(),
+    };
+    setComandas((prev) => [nova, ...prev]);
+    setProximoNumeroComanda((n) => n + 1);
+    return nova;
+  };
+
+  // Salva (upsert) uma comanda avulsa inteira
+  const handleSaveComanda = (comanda: ComandaAvulsa) => {
+    setComandas((prev) => {
+      const idx = prev.findIndex((c) => c.id === comanda.id);
+      if (idx < 0) return [comanda, ...prev];
+      const next = [...prev];
+      next[idx] = comanda;
+      return next;
+    });
+  };
+
+  // Cancela/exclui uma comanda avulsa (só se vazia ou confirmado)
+  const handleDeleteComanda = (comandaId: string) => {
+    setComandas((prev) => prev.filter((c) => c.id !== comandaId));
+  };
+
+  // Move a comanda de uma mesa para outra (mesa destino precisa estar livre)
+  const handleTransferTable = (deNumero: number, paraNumero: number): boolean => {
+    const origem = tables.find((t) => t.numero === deNumero);
+    const destino = tables.find((t) => t.numero === paraNumero);
+    if (!origem || !destino) return false;
+    if (origem.itens.length === 0) {
+      alert('A mesa de origem não tem itens para mover.');
+      return false;
+    }
+    if (destino.itens.length > 0) {
+      alert(`A Mesa #${paraNumero} já tem uma comanda aberta. Libere ou pague a destino antes de mover.`);
+      return false;
+    }
+    setTables((prev) =>
+      prev.map((t) => {
+        if (t.numero === deNumero) {
+          return { numero: t.numero, status: 'livre', itens: [], total: 0 };
+        }
+        if (t.numero === paraNumero) {
+          return {
+            ...t,
+            itens: origem.itens,
+            total: origem.total,
+            status: origem.status === 'livre' ? 'ocupada' : origem.status,
+            garcom: origem.garcom || t.garcom,
+            cliente: origem.cliente,
+            clienteTelefone: origem.clienteTelefone,
+            abertura: origem.abertura || new Date().toISOString(),
+            observacaoMesa: origem.observacaoMesa,
+            cozinhaEnviada: origem.cozinhaEnviada,
+            cupom: origem.cupom,
+            numeroComanda: origem.numeroComanda,
+          };
+        }
+        return t;
+      })
+    );
+    return true;
+  };
+
+  // Registra cancelamento de itens já enviados à cozinha (auditoria visível)
+  const handleCancelKitchenItems = (
+    contexto: { mesa?: number; comandaId?: string },
+    cancelados: { descricao: string; quantidade: number; motivo?: string }[]
+  ) => {
+    const identificador =
+      typeof contexto.mesa === 'number'
+        ? `Mesa #${contexto.mesa}`
+        : contexto.comandaId
+        ? identificadorComanda(comandas.find((c) => c.id === contexto.comandaId))
+        : null;
+    if (!identificador || cancelados.length === 0) return;
+    const agora = new Date().toISOString();
+    setKitchenOrders((prev) =>
+      prev
+        .filter((k) => (k.status === 'novo' || k.status === 'preparo') && k.origemIdentificador === identificador)
+        .map((k) => ({
+          ...k,
+          cancelamentos: [
+            ...(k.cancelamentos || []),
+            ...cancelados.map((c) => ({ ...c, dataHora: agora })),
+          ],
+        }))
+    );
+  };
+
+  // Ajusta o controle de "já enviado à cozinha" depois de um cancelamento
+  const handleAdjustSentItems = (
+    contexto: { mesa?: number; comandaId?: string },
+    itemId: string,
+    novaQuantidade: number
+  ) => {
+    if (typeof contexto.mesa === 'number') {
+      setTables((prev) =>
+        prev.map((t) =>
+          t.numero === contexto.mesa
+            ? {
+                ...t,
+                cozinhaEnviada: {
+                  ...t.cozinhaEnviada,
+                  [itemId]: Math.max(0, novaQuantidade),
+                },
+              }
+            : t
+        )
+      );
+    } else if (contexto.comandaId) {
+      setComandas((prev) =>
+        prev.map((c) =>
+          c.id === contexto.comandaId
+            ? {
+                ...c,
+                cozinhaEnviada: {
+                  ...c.cozinhaEnviada,
+                  [itemId]: Math.max(0, novaQuantidade),
+                },
+              }
+            : c
+        )
+      );
+    }
+  };
+
+  // Divide a comanda: itens marcados vão para uma nova comanda de Balcão
+  const handleDividirComanda = (
+    origem: { mesa?: number; comandaId?: string },
+    itensSeparados: OrderItem[]
+  ): ComandaAvulsa | null => {
+    if (itensSeparados.length === 0) {
+      alert('Selecione ao menos um item para separar.');
+      return null;
+    }
+    const numero = proximoNumeroComanda;
+    const nova: ComandaAvulsa = {
+      id: `CMD-${crypto.randomUUID()}`,
+      numero,
+      tipo: 'Balcão',
+      itens: itensSeparados,
+      subtotal: itensSeparados.reduce((acc, it) => acc + it.valorTotal, 0),
+      garcom:
+        typeof origem.mesa === 'number'
+          ? tables.find((t) => t.numero === origem.mesa)?.garcom
+          : comandas.find((c) => c.id === origem.comandaId)?.garcom,
+      abertura: new Date().toISOString(),
+    };
+    setComandas((prev) => [nova, ...prev]);
+    setProximoNumeroComanda((n) => n + 1);
+    return nova;
   };
 
   // Update table status
@@ -309,6 +563,13 @@ export function App() {
     itens: OrderItem[];
     subtotal: number;
     atendente?: string;
+    tipoAtendimento?: Sale['tipoAtendimento'];
+    numeroComanda?: number;
+    comandaId?: string;
+    clienteNome?: string;
+    clienteTelefone?: string;
+    enderecoEntrega?: string;
+    cupomCodigo?: string;
   }) => {
     setCurrentOrderForPayment(orderData);
     setActiveTab(2);
@@ -323,10 +584,10 @@ export function App() {
     }
     saleInProgress.current = true;
     try {
-      const next = completeSale(newSale, sales, tables, products);
+      const next = completeSale(newSale, sales, tables, products, comandas);
       // Do not release a table or report success unless the entire transaction is persisted.
       if (!setStored(STORAGE_KEYS.OPERATIONS, next)) throw new Error('Não foi possível salvar a venda. A mesa não foi liberada. Faça backup e verifique o armazenamento do navegador.');
-      setSales(next.sales); setTables(next.tables); setProducts(next.products);
+      setSales(next.sales); setTables(next.tables); setProducts(next.products); setComandas(next.comandas);
       handleOpenReceiptPrint(newSale);
       setCurrentOrderForPayment(null);
       return true;
@@ -334,13 +595,14 @@ export function App() {
     finally { saleInProgress.current = false; }
   };
 
-  // Print Table Pre-bill (isolated table printing)
+  // Print Table Pre-bill (isolated table printing; também serve a comandas avulsas)
   const handlePrintTableTicket = (
     mesaNum: number | string,
     items: OrderItem[]
   ) => {
     const sub = items.reduce((acc, it) => acc + it.valorTotal, 0);
     const tableObj = typeof mesaNum === 'number' ? tables.find((t) => t.numero === mesaNum) : null;
+    const comandaObj = typeof mesaNum === 'number' ? undefined : comandas.find((c) => c.id === mesaNum);
     const taxaServicoPercent = config.taxaServicoPadraoPercent ?? 10;
     const taxaServicoValor = Number(((sub * taxaServicoPercent) / 100).toFixed(2));
     const totalLiquido = sub + taxaServicoValor;
@@ -348,8 +610,8 @@ export function App() {
     setPrintModalState({
       isOpen: true,
       ticketType: 'conferencia_mesa',
-      mesa: mesaNum,
-      atendente: tableObj?.garcom || config.usuarioAtual,
+      mesa: tableObj ? mesaNum : (comandaObj ? `${comandaObj.tipo} #${comandaObj.numero}` : mesaNum),
+      atendente: tableObj?.garcom || comandaObj?.garcom || config.usuarioAtual,
       itens: items,
       subtotal: sub,
       taxaServicoPercent,
@@ -363,7 +625,12 @@ export function App() {
     setPrintModalState({
       isOpen: true,
       ticketType: 'cupom_venda',
-      mesa: sale.mesa,
+      mesa:
+        typeof sale.mesa === 'number'
+          ? sale.mesa
+          : sale.numeroComanda
+          ? `${sale.tipoAtendimento} #${sale.numeroComanda}`
+          : sale.mesa,
       clienteNome: sale.clienteNome,
       atendente: sale.atendente,
       itens: sale.itens,
@@ -398,24 +665,36 @@ export function App() {
     });
   };
 
-  // Send to kitchen directly from PDV
+  // Send to kitchen directly from PDV (mesa ou comanda avulsa)
   const handleSendToKitchenFromPdv = (orderData: {
     mesa: number | string;
     itens: OrderItem[];
     observacao?: string;
   }) => {
     const tableObj = typeof orderData.mesa === 'number' ? tables.find((t) => t.numero === orderData.mesa) : null;
+    const comandaObj = typeof orderData.mesa === 'number' ? undefined : comandas.find((c) => c.id === orderData.mesa);
+    const enviadas = tableObj?.cozinhaEnviada ?? comandaObj?.cozinhaEnviada ?? {};
     const pendingItems = orderData.itens.map(item => {
-      const qty = Math.max(0, item.quantidade - (tableObj?.cozinhaEnviada?.[item.id] ?? 0));
+      const qty = Math.max(0, item.quantidade - (enviadas[item.id] ?? 0));
       return { ...item, quantidade: qty, valorTotal: Number((qty * item.precoUnitario).toFixed(2)) };
     }).filter(item => item.quantidade > 0);
-    if (!pendingItems.length) { alert('Todos os itens desta mesa já foram enviados para a cozinha.'); return false; }
+    if (!pendingItems.length) { alert('Todos os itens desta comanda já foram enviados para a cozinha.'); return false; }
+
+    const origem: KitchenOrder['origem'] = tableObj ? 'Mesa' : comandaObj?.tipo === 'Delivery' ? 'Delivery' : 'Balcão';
+    const identificador = tableObj
+      ? `Mesa #${tableObj.numero}`
+      : identificadorComanda(comandaObj) ?? 'Balcão';
+    const clienteNome = tableObj?.cliente ?? comandaObj?.clienteNome ?? identificador;
+    const novoNumero = origem === 'Mesa' ? `MESA-${tableObj!.numero}` : `AVL-${comandaObj!.numero}`;
+
     const newKOrder: KitchenOrder = {
       id: `k-${Date.now()}`,
-      numeroPedido: `MESA-${orderData.mesa}`,
-      origem: 'Mesa',
-      origemIdentificador: `Mesa #${orderData.mesa}`,
-      clienteNome: tableObj?.cliente || `Mesa ${orderData.mesa}`,
+      numeroPedido: novoNumero,
+      origem,
+      origemIdentificador: identificador,
+      clienteNome,
+      clienteTelefone: tableObj?.clienteTelefone ?? comandaObj?.clienteTelefone,
+      clienteEndereco: comandaObj?.endereco,
       itens: pendingItems,
       total: pendingItems.reduce((acc, it) => acc + it.valorTotal, 0),
       dataHora: new Date().toISOString(),
@@ -423,9 +702,18 @@ export function App() {
       observacoes: orderData.observacao,
     };
     setKitchenOrders((prev) => [newKOrder, ...prev]);
-    if (tableObj) setTables(prev => prev.map(t => t.numero === tableObj.numero ? {
-      ...t, cozinhaEnviada: { ...t.cozinhaEnviada, ...Object.fromEntries(orderData.itens.map(item => [item.id, Math.max(item.quantidade, t.cozinhaEnviada?.[item.id] ?? 0)])) },
-    } : t));
+    const envioMap = Object.fromEntries(
+      orderData.itens.map(item => [item.id, Math.max(item.quantidade, enviadas[item.id] ?? 0)])
+    );
+    if (tableObj) {
+      setTables(prev => prev.map(t => t.numero === tableObj.numero ? {
+        ...t, cozinhaEnviada: { ...t.cozinhaEnviada, ...envioMap },
+      } : t));
+    } else if (comandaObj) {
+      setComandas(prev => prev.map(c => c.id === comandaObj.id ? {
+        ...c, cozinhaEnviada: { ...c.cozinhaEnviada, ...envioMap },
+      } : c));
+    }
     return true;
   };
 
@@ -471,6 +759,7 @@ export function App() {
       <Header
         config={config}
         tables={tables}
+        sales={sales}
         licenseVerifiedAt={accessLicense.license.verifiedAt}
         licenseOffline={accessLicense.offline}
       />
@@ -498,6 +787,10 @@ export function App() {
               <Tab1Pdv
                 products={products}
                 tables={tables}
+                comandas={comandas}
+                employees={employees}
+                sales={sales}
+                proximoNumeroComanda={proximoNumeroComanda}
                 onSaveTableItems={handleSaveTableItems}
                 onGoToPayment={handleGoToPayment}
                 onSendToKitchen={handleSendToKitchenFromPdv}
@@ -507,6 +800,17 @@ export function App() {
                 selectedTableNumber={selectedTableNumber}
                 setSelectedTableNumber={setSelectedTableNumber}
                 onSaveTableObservation={handleSaveTableObservation}
+                onUpdateTableContext={handleUpdateTableContext}
+                onCreateComandaAvulsa={handleCreateComandaAvulsa}
+                onSaveComanda={handleSaveComanda}
+                onDeleteComanda={handleDeleteComanda}
+                onUpdateComandaContext={handleUpdateComandaContext}
+                onTransferTable={handleTransferTable}
+                onDividirComanda={handleDividirComanda}
+                onCancelKitchenItems={handleCancelKitchenItems}
+                onAdjustSentItems={handleAdjustSentItems}
+                onContextChange={setContextoPdv}
+                onUpdateTableStatus={handleUpdateTableStatus}
                 onUpdateAppearance={handleUpdateAppearance}
               />
             )}

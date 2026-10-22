@@ -1,7 +1,7 @@
 import React from 'react';
 import { TrendingUp, Receipt, Users, CookingPot, ArrowRight } from 'lucide-react';
 import { Sale, Table, KitchenOrder } from '../../types';
-import { formatCurrency, localDayKey } from '../../utils/formatters';
+import { formatCurrency, localDayKey, rotuloOrigemVenda } from '../../utils/formatters';
 
 interface Props {
   sales: Sale[];
@@ -120,7 +120,7 @@ export const Tab11ResumoRapido: React.FC<Props> = ({ sales, tables, kitchenOrder
               const map: Record<string, number> = {};
               sales.forEach((s) => {
                 if (isHoje(s)) {
-                  const m = typeof s.mesa === 'number' ? `Mesa ${s.mesa}` : s.mesa || 'Balcão';
+                  const m = rotuloOrigemVenda(s);
                   map[m] = (map[m] || 0) + (s.totalLiquido || s.subtotal || 0);
                 }
               });

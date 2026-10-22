@@ -50,7 +50,7 @@ describe('pagamento', () => {
 describe('lançamento de itens', () => {
   it('não mistura observações diferentes nem permite ultrapassar o estoque', () => {
     const save = vi.fn(); const alert = vi.spyOn(window, 'alert').mockImplementation(() => {});
-    render(<Tab1Pdv products={[product]} tables={[{ ...table, itens: [{ ...item, observacao: 'sem cebola' }] }]} onSaveTableItems={save} onGoToPayment={() => {}} onSendToKitchen={() => true} onPrintTableTicket={() => {}} onNavigateTab={() => {}} config={DEFAULT_CONFIG} />);
+    render(<Tab1Pdv products={[product]} tables={[{ ...table, itens: [{ ...item, observacao: 'sem cebola' }] }]} comandas={[]} employees={[]} sales={[]} proximoNumeroComanda={1} onSaveTableItems={save} onGoToPayment={() => {}} onSendToKitchen={() => true} onPrintTableTicket={() => {}} onNavigateTab={() => {}} config={DEFAULT_CONFIG} onCreateComandaAvulsa={() => ({ id: 'x', numero: 1, tipo: 'Balcão', itens: [], subtotal: 0, abertura: '' }) as any} onSaveComanda={() => {}} onDeleteComanda={() => {}} onUpdateComandaContext={() => {}} onTransferTable={() => false} onDividirComanda={() => null} onCancelKitchenItems={() => {}} onAdjustSentItems={() => {}} />);
     fireEvent.click(screen.getByRole('button', { name: /Hambúrguer.*5/ }));
     expect(save.mock.calls[0][1]).toHaveLength(2);
     fireEvent.change(screen.getByLabelText('Quantidade do item'), { target: { value: '100' } });
